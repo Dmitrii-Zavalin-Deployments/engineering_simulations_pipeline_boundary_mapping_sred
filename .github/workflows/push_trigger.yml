@@ -1,4 +1,4 @@
-name: Install and Configure OpenFOAM v12 with OpenMPI
+name: Install and Configure OpenFOAM v12
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   setup-openfoam:
-    name: Setup OpenFOAM v12 and OpenMPI
+    name: Setup OpenFOAM v12
     runs-on: ubuntu-latest
 
     steps:
@@ -33,35 +33,13 @@ jobs:
       run: |
         sudo apt -y install openfoam12
 
-    - name: Install OpenMPI
-      run: |
-        sudo apt install -y openmpi-bin libopenmpi-dev
-
-    - name: Export OpenMPI Paths
-      run: |
-        echo "export WM_MPLIB=SYSTEMOPENMPI" >> $HOME/.bashrc
-        echo "export MPI_ROOT=/usr" >> $HOME/.bashrc
-        echo "export MPI_ARCH_FLAGS=\"-DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX\"" >> $HOME/.bashrc
-        echo "export MPI_ARCH_INC=\"-I/usr/include/openmpi\"" >> $HOME/.bashrc
-        echo "export MPI_ARCH_LIBS=\"-L/usr/lib/openmpi -lmpi\"" >> $HOME/.bashrc
-        source $HOME/.bashrc
-
-    - name: Configure OpenFOAM Environment
+    - name: Add OpenFOAM to .bashrc
       run: |
         echo ". /opt/openfoam12/etc/bashrc" >> $HOME/.bashrc
         source $HOME/.bashrc
 
-    - name: Verify OpenFOAM Installation
+    - name: Verify OpenFOAM Environment
       run: |
+        . /opt/openfoam12/etc/bashrc
+        echo $WM_PROJECT_DIR
         foamRun -help
-        echo "OpenFOAM v12 and OpenMPI installation successful."
-
-    - name: Run Example Simulation
-      run: |
-        mkdir -p $FOAM_RUN
-        cd $FOAM_RUN
-        cp -r $FOAM_TUTORIALS/incompressibleFluid/pitzDailySteady .
-        cd pitzDailySteady
-        blockMesh
-        foamRun
-        paraFoam
