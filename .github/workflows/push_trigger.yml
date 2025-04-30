@@ -1,4 +1,4 @@
-name: Resolve OpenMPI Conflicts for OpenFOAM
+name: Configure OpenMPI for OpenFOAM
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   configure-openmpi:
-    name: Resolve MPI Conflicts and Configure OpenMPI
+    name: Use Direct OpenMPI Paths for OpenFOAM
     runs-on: ubuntu-latest
 
     steps:
@@ -24,26 +24,16 @@ jobs:
       run: |
         sudo apt install -y openmpi-bin libopenmpi-dev
 
-    - name: Remove Existing Conflicting MPI Alternatives
+    - name: Export OpenMPI Paths
       run: |
-        sudo update-alternatives --remove mpi /usr/bin/mpiexec || true
-        sudo update-alternatives --remove mpi /usr/bin/mpirun || true
-        sudo update-alternatives --remove mpi /usr/bin/mpicc.openmpi || true
-        sudo rm /usr/bin/mpiexec || true
-        sudo rm /usr/bin/mpirun || true
+        echo "export WM_MPLIB=SYSTEMOPENMPI" >> $HOME/.bashrc
+        echo "export MPI_ROOT=/usr" >> $HOME/.bashrc
+        echo "export MPI_ARCH_FLAGS=\"-DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX\"" >> $HOME/.bashrc
+        echo "export MPI_ARCH_INC=\"-I/usr/include/openmpi\"" >> $HOME/.bashrc
+        echo "export MPI_ARCH_LIBS=\"-L/usr/lib/openmpi -lmpi\"" >> $HOME/.bashrc
+        source $HOME/.bashrc
 
-    - name: Re-register OpenMPI Alternatives
+    - name: Verify OpenMPI Installation
       run: |
-        sudo update-alternatives --install /usr/bin/mpicc mpi /usr/bin/mpicc.openmpi 50
-        sudo update-alternatives --install /usr/bin/mpiexec mpi /usr/bin/mpiexec.openmpi 50
-        sudo update-alternatives --install /usr/bin/mpirun mpi /usr/bin/mpirun.openmpi 50
-
-    - name: Set OpenMPI as Default
-      run: |
-        sudo update-alternatives --set mpi /usr/bin/mpicc.openmpi
-
-    - name: Verify OpenMPI Configuration
-      run: |
-        update-alternatives --query mpi
-        mpicc --version
-        mpiexec --version
+        /usr/bin/mpicc.openmpi --version
+        /usr/bin/mpiexec.openmpi --version
