@@ -33,8 +33,9 @@ jobs:
       run: |
         sudo apt -y install openfoam12
 
-    - name: Verify OpenFOAM Installation Files
+    - name: Verify OpenFOAM Installation
       run: |
+        dpkg -l | grep openfoam12
         ls /opt/openfoam12/bin
 
     - name: Manually Set OpenFOAM Environment Variables
@@ -47,4 +48,5 @@ jobs:
 
     - name: Test OpenFOAM Execution
       run: |
-        /opt/openfoam12/bin/foamRun -help || echo "foamRun command not found!"
+        blockMesh -help || echo "blockMesh command not found!"
+        foamExec -help || echo "foamExec command not found!"
