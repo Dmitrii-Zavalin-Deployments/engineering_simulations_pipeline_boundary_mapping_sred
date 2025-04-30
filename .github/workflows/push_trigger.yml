@@ -1,4 +1,4 @@
-name: Install OpenFOAM (Manual Repository Setup)
+name: Install OpenFOAM (Modern GPG Key Handling)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 jobs:
   setup-openfoam:
     name: Setup OpenFOAM with Manual Repository
-    runs-on: ubuntu-latest  # You can change this to 'debian-latest' to test on Debian.
+    runs-on: ubuntu-latest  # Can be changed to 'debian-latest' as needed.
 
     steps:
     - name: Checkout Repository
@@ -19,25 +19,25 @@ jobs:
       run: |
         # Install necessary tools
         sudo apt-get update
-        sudo apt-get install -y curl wget software-properties-common ca-certificates
+        sudo apt-get install -y curl wget gnupg ca-certificates software-properties-common
 
-    - name: Add OpenFOAM Repository Manually
+    - name: Add OpenFOAM Repository and GPG Key
       run: |
-        # Add the signing key
-        wget -qO - https://dl.openfoam.com/pubkey.gpg | sudo apt-key add -
+        # Manually add GPG key to /etc/apt/trusted.gpg.d
+        wget -qO - https://dl.openfoam.com/pubkey.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/openfoam.gpg > /dev/null
         
-        # Add the repository manually for Ubuntu (focal in this example)
-        sudo sh -c "echo 'deb http://dl.openfoam.com/repos/deb focal main' > /etc/apt/sources.list.d/openfoam.list"
+        # Add the repository manually
+        echo "deb http://dl.openfoam.com/repos/deb focal main" | sudo tee /etc/apt/sources.list.d/openfoam.list
 
         # Update repositories
         sudo apt-get update
 
     - name: Install OpenFOAM
       run: |
-        # Install OpenFOAM package (example: version 2412)
+        # Install OpenFOAM (example: version 2412)
         sudo apt-get install -y openfoam2412-default
 
-    - name: Verify Installation
+    - name: Verify OpenFOAM Installation
       run: |
         # Ensure binaries and configuration files exist
         ls /usr/bin | grep openfoam || echo "OpenFOAM binaries not found!"
@@ -45,7 +45,7 @@ jobs:
 
     - name: Configure OpenFOAM Environment
       run: |
-        # Set up environment variables manually
+        # Manually configure OpenFOAM environment
         echo "export WM_PROJECT_DIR=/usr/share/openfoam" >> ~/.bashrc
         echo "export PATH=/usr/bin:\$PATH" >> ~/.bashrc
         echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH" >> ~/.bashrc
@@ -54,5 +54,6 @@ jobs:
     - name: Test OpenFOAM Commands
       run: |
         # Test OpenFOAM commands
+        source ~/.bashrc
         openfoam2412 || echo "OpenFOAM session failed!"
         blockMesh -help || echo "blockMesh command not found!"
