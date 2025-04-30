@@ -1,4 +1,4 @@
-name: Fix OpenFOAM Installation
+name: Fix OpenMPI for OpenFOAM Installation
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  fix-openfoam:
-    name: Fix OpenFOAM Installation
+  configure-openmpi:
+    name: Configure OpenMPI for OpenFOAM
     runs-on: ubuntu-latest
 
     steps:
@@ -20,29 +20,22 @@ jobs:
         sudo apt-add-repository universe
         sudo apt update
 
-    - name: Add OpenFOAM Repository and Public Key
+    - name: Install OpenMPI
       run: |
-        sudo sh -c "wget -O - https://dl.openfoam.org/gpg.key > /etc/apt/trusted.gpg.d/openfoam.asc"
-        sudo add-apt-repository http://dl.openfoam.org/ubuntu
+        sudo apt install -y openmpi-bin libopenmpi-dev
 
-    - name: Update Package List
+    - name: Register OpenMPI in Alternatives
       run: |
-        sudo apt update
-
-    - name: Install OpenFOAM v12
-      run: |
-        sudo apt -y install openfoam12
+        sudo update-alternatives --install /usr/bin/mpicc mpi /usr/bin/mpicc.openmpi 50
+        sudo update-alternatives --install /usr/bin/mpicxx mpi /usr/bin/mpicxx.openmpi 50
+        sudo update-alternatives --install /usr/bin/mpiexec mpi /usr/bin/mpiexec.openmpi 50
+        sudo update-alternatives --install /usr/bin/mpirun mpi /usr/bin/mpirun.openmpi 50
 
     - name: Set OpenMPI as Default
       run: |
-        sudo update-alternatives --set mpi /usr/lib/openmpi/include
+        sudo update-alternatives --set mpi /usr/bin/mpicc.openmpi
 
-    - name: Add OpenFOAM to .bashrc
+    - name: Verify OpenMPI Installation
       run: |
-        echo ". /opt/openfoam12/etc/bashrc" >> $HOME/.bashrc
-        source $HOME/.bashrc
-
-    - name: Verify Installation
-      run: |
-        foamRun -help
-        echo "OpenFOAM installation fixed."
+        mpicc --version
+        mpirun --version
