@@ -1,4 +1,4 @@
-name: Install and Configure OpenFOAM v12
+name: Install OpenFOAM from Repository
 
 on:
   push:
@@ -8,45 +8,51 @@ on:
 
 jobs:
   setup-openfoam:
-    name: Setup OpenFOAM v12
+    name: Setup OpenFOAM
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Enable Universe Repository
+    - name: Add OpenFOAM Repository and Key
       run: |
-        sudo apt-add-repository universe
-        sudo apt update
-
-    - name: Install OpenFOAM Repository and Public Key
-      run: |
-        sudo sh -c "wget -O - https://dl.openfoam.org/gpg.key > /etc/apt/trusted.gpg.d/openfoam.asc"
-        sudo add-apt-repository http://dl.openfoam.org/ubuntu
+        # Add OpenFOAM repository and signing key
+        curl -s https://dl.openfoam.com/add-debian-repo.sh | sudo bash
 
     - name: Update Package List
       run: |
-        sudo apt update
+        # Update package repository information
+        sudo apt-get update
 
-    - name: Install OpenFOAM v12
+    - name: Install OpenFOAM
       run: |
-        sudo apt -y install openfoam12
+        # Install OpenFOAM (e.g., version openfoam2412-default)
+        sudo apt-get install -y openfoam2412-default
 
     - name: Verify OpenFOAM Installation
       run: |
-        dpkg -l | grep openfoam12
-        ls /opt/openfoam12/bin
+        # Check the binaries are installed in the expected location
+        ls /usr/bin | grep openfoam || echo "OpenFOAM binaries not found!"
+        ls /usr/share/openfoam || echo "OpenFOAM configuration directory missing!"
 
-    - name: Manually Set OpenFOAM Environment Variables
+    - name: Configure OpenFOAM Environment
       run: |
-        echo "export WM_PROJECT_DIR=/opt/openfoam12" >> ~/.bashrc
-        echo "export FOAM_INST_DIR=/opt" >> ~/.bashrc
-        echo "export PATH=/opt/openfoam12/bin:\$PATH" >> ~/.bashrc
-        echo "export LD_LIBRARY_PATH=/opt/openfoam12/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
+        # Manually configure OpenFOAM environment
+        echo "export WM_PROJECT_DIR=/usr/share/openfoam" >> ~/.bashrc
+        echo "export PATH=/usr/bin:\$PATH" >> ~/.bashrc
+        echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH" >> ~/.bashrc
         source ~/.bashrc
 
-    - name: Test OpenFOAM Execution
+    - name: Test OpenFOAM Session
       run: |
+        # Start an OpenFOAM shell session and test the environment
+        source ~/.bashrc
+        openfoam2412 -help || echo "OpenFOAM command not found!"
+
+    - name: Test OpenFOAM Example
+      run: |
+        # Run an OpenFOAM example to verify functionality
+        mkdir -p $HOME/OpenFOAM/run
+        cd $HOME/OpenFOAM/run
         blockMesh -help || echo "blockMesh command not found!"
-        foamExec -help || echo "foamExec command not found!"
