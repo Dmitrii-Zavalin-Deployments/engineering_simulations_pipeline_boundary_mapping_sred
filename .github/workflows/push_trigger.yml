@@ -33,13 +33,21 @@ jobs:
       run: |
         sudo apt -y install openfoam12
 
-    - name: Manually Add OpenFOAM to Path
+    - name: Verify OpenFOAM Installation Files
+      run: |
+        ls /opt/openfoam12/bin
+
+    - name: Add OpenFOAM to Path
       run: |
         echo "export PATH=/opt/openfoam12/bin:\$PATH" >> ~/.bashrc
         echo "export LD_LIBRARY_PATH=/opt/openfoam12/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
         source ~/.bashrc
 
-    - name: Verify OpenFOAM Environment
+    - name: Source OpenFOAM Environment
       run: |
-        ls /opt/openfoam12
-        bash -i -c "source /opt/openfoam12/etc/bashrc && echo \$WM_PROJECT_DIR && /opt/openfoam12/bin/foamRun -help"
+        source /opt/openfoam12/etc/bashrc
+        echo $WM_PROJECT_DIR
+
+    - name: Verify OpenFOAM Execution
+      run: |
+        /opt/openfoam12/bin/foamRun -help
