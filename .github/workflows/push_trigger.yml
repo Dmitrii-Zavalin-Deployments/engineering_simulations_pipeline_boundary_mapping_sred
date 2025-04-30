@@ -1,4 +1,4 @@
-name: Configure OpenMPI for OpenFOAM
+name: Resolve OpenMPI Conflicts for OpenFOAM
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   configure-openmpi:
-    name: Configure OpenMPI for OpenFOAM
+    name: Resolve MPI Conflicts and Configure OpenMPI
     runs-on: ubuntu-latest
 
     steps:
@@ -24,12 +24,15 @@ jobs:
       run: |
         sudo apt install -y openmpi-bin libopenmpi-dev
 
-    - name: Remove Conflicting Alternatives
+    - name: Remove Existing Conflicting MPI Alternatives
       run: |
         sudo update-alternatives --remove mpi /usr/bin/mpiexec || true
         sudo update-alternatives --remove mpi /usr/bin/mpirun || true
+        sudo update-alternatives --remove mpi /usr/bin/mpicc.openmpi || true
+        sudo rm /usr/bin/mpiexec || true
+        sudo rm /usr/bin/mpirun || true
 
-    - name: Register OpenMPI in Alternatives
+    - name: Re-register OpenMPI Alternatives
       run: |
         sudo update-alternatives --install /usr/bin/mpicc mpi /usr/bin/mpicc.openmpi 50
         sudo update-alternatives --install /usr/bin/mpiexec mpi /usr/bin/mpiexec.openmpi 50
@@ -39,7 +42,7 @@ jobs:
       run: |
         sudo update-alternatives --set mpi /usr/bin/mpicc.openmpi
 
-    - name: Verify OpenMPI Installation
+    - name: Verify OpenMPI Configuration
       run: |
         update-alternatives --query mpi
         mpicc --version
