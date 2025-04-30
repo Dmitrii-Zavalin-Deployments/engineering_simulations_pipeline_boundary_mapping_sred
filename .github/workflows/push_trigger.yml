@@ -1,4 +1,4 @@
-name: Install OpenFOAM v12
+name: Fix OpenFOAM Installation
 
 on:
   push:
@@ -7,13 +7,18 @@ on:
       - main
 
 jobs:
-  install-openfoam:
-    name: Install OpenFOAM v12
+  fix-openfoam:
+    name: Fix OpenFOAM Installation
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
+
+    - name: Enable Universe Repository
+      run: |
+        sudo apt-add-repository universe
+        sudo apt update
 
     - name: Add OpenFOAM Repository and Public Key
       run: |
@@ -28,6 +33,10 @@ jobs:
       run: |
         sudo apt -y install openfoam12
 
+    - name: Set OpenMPI as Default
+      run: |
+        sudo update-alternatives --set mpi /usr/lib/openmpi/include
+
     - name: Add OpenFOAM to .bashrc
       run: |
         echo ". /opt/openfoam12/etc/bashrc" >> $HOME/.bashrc
@@ -36,4 +45,4 @@ jobs:
     - name: Verify Installation
       run: |
         foamRun -help
-        echo "OpenFOAM v12 installation successful."
+        echo "OpenFOAM installation fixed."
