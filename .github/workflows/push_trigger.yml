@@ -1,4 +1,4 @@
-name: Fix OpenMPI Alternatives for OpenFOAM
+name: Configure OpenMPI for OpenFOAM
 
 on:
   push:
@@ -26,7 +26,6 @@ jobs:
 
     - name: Remove Conflicting Alternatives
       run: |
-        sudo update-alternatives --remove mpi /usr/bin/mpicc.openmpi || true
         sudo update-alternatives --remove mpi /usr/bin/mpiexec || true
         sudo update-alternatives --remove mpi /usr/bin/mpirun || true
 
