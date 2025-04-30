@@ -1,4 +1,4 @@
-name: Fix OpenMPI for OpenFOAM Installation
+name: Fix OpenMPI Alternatives for OpenFOAM
 
 on:
   push:
@@ -24,10 +24,15 @@ jobs:
       run: |
         sudo apt install -y openmpi-bin libopenmpi-dev
 
+    - name: Remove Conflicting Alternatives
+      run: |
+        sudo update-alternatives --remove mpi /usr/bin/mpicc.openmpi || true
+        sudo update-alternatives --remove mpi /usr/bin/mpiexec || true
+        sudo update-alternatives --remove mpi /usr/bin/mpirun || true
+
     - name: Register OpenMPI in Alternatives
       run: |
         sudo update-alternatives --install /usr/bin/mpicc mpi /usr/bin/mpicc.openmpi 50
-        sudo update-alternatives --install /usr/bin/mpicxx mpi /usr/bin/mpicxx.openmpi 50
         sudo update-alternatives --install /usr/bin/mpiexec mpi /usr/bin/mpiexec.openmpi 50
         sudo update-alternatives --install /usr/bin/mpirun mpi /usr/bin/mpirun.openmpi 50
 
@@ -37,5 +42,6 @@ jobs:
 
     - name: Verify OpenMPI Installation
       run: |
+        update-alternatives --query mpi
         mpicc --version
-        mpirun --version
+        mpiexec --version
