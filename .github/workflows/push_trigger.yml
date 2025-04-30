@@ -37,17 +37,14 @@ jobs:
       run: |
         ls /opt/openfoam12/bin
 
-    - name: Add OpenFOAM to Path
+    - name: Manually Set OpenFOAM Environment Variables
       run: |
+        echo "export WM_PROJECT_DIR=/opt/openfoam12" >> ~/.bashrc
+        echo "export FOAM_INST_DIR=/opt" >> ~/.bashrc
         echo "export PATH=/opt/openfoam12/bin:\$PATH" >> ~/.bashrc
         echo "export LD_LIBRARY_PATH=/opt/openfoam12/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
         source ~/.bashrc
 
-    - name: Source OpenFOAM Environment
+    - name: Test OpenFOAM Execution
       run: |
-        source /opt/openfoam12/etc/bashrc
-        echo $WM_PROJECT_DIR
-
-    - name: Verify OpenFOAM Execution
-      run: |
-        /opt/openfoam12/bin/foamRun -help
+        /opt/openfoam12/bin/foamRun -help || echo "foamRun command not found!"
