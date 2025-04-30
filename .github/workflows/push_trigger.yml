@@ -40,6 +40,4 @@ jobs:
 
     - name: Verify OpenFOAM Environment
       run: |
-        . /opt/openfoam12/etc/bashrc
-        echo $WM_PROJECT_DIR
-        foamRun -help
+        bash --rcfile /opt/openfoam12/etc/bashrc -c "echo \$WM_PROJECT_DIR && foamRun -help"
