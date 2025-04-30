@@ -1,0 +1,44 @@
+name: Setup OpenFOAM Environment
+
+on:
+  push:
+    branches:
+      - master
+      - main # Adjust if your default branch is different
+
+jobs:
+  setup-openfoam:
+    name: Setup Environment for Simulations
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Install Prerequisites
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          software-properties-common \
+          build-essential \
+          cmake \
+          python3 \
+          python3-pip \
+          gnuplot \
+          libopenmpi-dev \
+          paraview # Add other dependencies as needed
+
+    - name: Install OpenFOAM
+      run: |
+        sudo sh -c "wget -qO - http://dl.openfoam.org/gpg.key | apt-key add -"
+        sudo add-apt-repository http://dl.openfoam.org/ubuntu
+        sudo apt-get update
+        sudo apt-get install -y openfoam10
+
+    - name: Verify Installation
+      run: |
+        echo "Testing OpenFOAM installation..."
+        openfoam10 --version
+        foamSystemCheck
+
+
