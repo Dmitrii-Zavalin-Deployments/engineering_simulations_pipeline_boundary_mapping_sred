@@ -1,4 +1,4 @@
-name: Compile OpenFOAM with Third-Party Software
+name: Install OpenFOAM v12
 
 on:
   push:
@@ -7,79 +7,33 @@ on:
       - main
 
 jobs:
-  compile-openfoam:
-    name: Compile OpenFOAM and Third-Party Software
+  install-openfoam:
+    name: Install OpenFOAM v12
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Install Required Compilation Software
+    - name: Add OpenFOAM Repository and Public Key
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          cmake \
-          git \
-          ca-certificates \
-          flex \
-          libopenmpi-dev \
-          zlib1g-dev \
-          gnuplot \
-          libxt-dev \
-          libxml2-dev \
-          libhdf5-dev \
-          libavfilter-dev \
-          libtheora-dev \
-          libgl2ps-dev \
-          libx11-dev \
-          libqt5x11extras5-dev \
-          libglew-dev \
-          libutfcpp-dev \
-          libdouble-conversion-dev \
-          libfreetype-dev \
-          libqt5svg5-dev \
-          qtxmlpatterns5-dev-tools \
-          qttools5-dev \
-          python3-dev
+        sudo sh -c "wget -O - https://dl.openfoam.org/gpg.key > /etc/apt/trusted.gpg.d/openfoam.asc"
+        sudo add-apt-repository http://dl.openfoam.org/ubuntu
 
-    - name: Clone OpenFOAM and ThirdParty Repositories
+    - name: Update Package List
       run: |
-        mkdir -p $HOME/OpenFOAM
-        cd $HOME/OpenFOAM
-        git clone https://github.com/OpenFOAM/OpenFOAM-dev.git
-        git clone https://github.com/OpenFOAM/ThirdParty-dev.git
+        sudo apt update
 
-    - name: Configure Preferences for Third-Party Software
+    - name: Install OpenFOAM v12
       run: |
-        mkdir -p $HOME/.OpenFOAM
-        echo "export SCOTCH_VERSION=6.0.9" >> $HOME/.OpenFOAM/prefs.sh
-        echo "export ZOLTAN_VERSION=3.90" >> $HOME/.OpenFOAM/prefs.sh
-        echo "export ParaView_TYPE=ThirdParty" >> $HOME/.OpenFOAM/prefs.sh
-        echo "export ParaView_VERSION=5.11.2" >> $HOME/.OpenFOAM/prefs.sh
-        echo "export WM_MPLIB=OPENMPI" >> $HOME/.OpenFOAM/prefs.sh
+        sudo apt -y install openfoam12
+
+    - name: Add OpenFOAM to .bashrc
+      run: |
+        echo ". /opt/openfoam12/etc/bashrc" >> $HOME/.bashrc
         source $HOME/.bashrc
-
-    - name: Build ParaView Locally
-      run: |
-        cd $HOME/OpenFOAM/ThirdParty-dev
-        ./makeParaView -version 5.11.2
-
-    - name: Compile OpenFOAM
-      run: |
-        cd $HOME/OpenFOAM/OpenFOAM-dev
-        ./Allwmake -q -j $(nproc)
-        echo "Compilation complete."
 
     - name: Verify Installation
       run: |
-        echo $WM_PROJECT_DIR
-        foamSystemCheck
-
-    - name: Update System and Pull New Changes
-      if: github.event_name == 'push'
-      run: |
-        cd $HOME/OpenFOAM/OpenFOAM-dev
-        git pull
-        ./Allwmake -update
+        foamRun -help
+        echo "OpenFOAM v12 installation successful."
