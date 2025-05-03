@@ -1,59 +1,55 @@
-name: Install OpenFOAM (Modern GPG Key Handling)
+name: Run Ubuntu with X11
 
-on:
-  push:
-    branches:
-      - master
-      - main
+on: [push]
 
 jobs:
-  setup-openfoam:
-    name: Setup OpenFOAM with Manual Repository
-    runs-on: ubuntu-latest  # Can be changed to 'debian-latest' as needed.
+  ubuntu-x11:
+    runs-on: ubuntu-latest
+    container: ubuntu:20.04
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-
-    - name: Install Prerequisites
+    - name: Update and Install Dependencies
       run: |
-        # Install necessary tools
-        sudo apt-get update
-        sudo apt-get install -y curl wget gnupg ca-certificates software-properties-common
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          xvfb \
+          xauth \
+          fluxbox \
+          gnome-terminal \
+          chromium-browser \
+          selenium \
+          openfoam
 
-    - name: Add OpenFOAM Repository and GPG Key
+    - name: Set up Xvfb
       run: |
-        # Manually add GPG key to /etc/apt/trusted.gpg.d
-        wget -qO - https://dl.openfoam.com/pubkey.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/openfoam.gpg > /dev/null
-        
-        # Add the repository manually
-        echo "deb http://dl.openfoam.com/repos/deb focal main" | sudo tee /etc/apt/sources.list.d/openfoam.list
+        sudo Xvfb :99 -screen 0 1280x1024x24 &
+        export DISPLAY=:99
 
-        # Update repositories
-        sudo apt-get update
-
-    - name: Install OpenFOAM
+    - name: Create .Xauthority
       run: |
-        # Install OpenFOAM (example: version 2412)
-        sudo apt-get install -y openfoam2412-default
+        touch ~/.Xauthority
+        xauth qn -db :99 - :0 | xauth -merge -
+        chmod 600 ~/.Xauthority
 
-    - name: Verify OpenFOAM Installation
-      run: |
-        # Ensure binaries and configuration files exist
-        ls /usr/bin | grep openfoam || echo "OpenFOAM binaries not found!"
-        ls /usr/share/openfoam || echo "OpenFOAM configuration directory missing!"
+    - name: Start Fluxbox (Optional - for visual confirmation)
+      run: fluxbox &
 
-    - name: Configure OpenFOAM Environment
+    - name: Run Your Applications (Replace with your actual commands)
       run: |
-        # Manually configure OpenFOAM environment
-        echo "export WM_PROJECT_DIR=/usr/share/openfoam" >> ~/.bashrc
-        echo "export PATH=/usr/bin:\$PATH" >> ~/.bashrc
-        echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH" >> ~/.bashrc
-        source ~/.bashrc
+        echo "Starting your applications..."
+        # Example commands:
+        # gnome-terminal &
+        # chromium-browser --no-sandbox &
+        # runOpenFOAMSimulation # Replace with your OpenFOAM command
 
-    - name: Test OpenFOAM Commands
+    - name: Get VNC Connection Information
       run: |
-        # Test OpenFOAM commands
-        source ~/.bashrc
-        openfoam2412 || echo "OpenFOAM session failed!"
-        blockMesh -help || echo "blockMesh command not found!"
+        echo "To connect via VNC, you might need to forward a local port to the container."
+        echo "Since GitHub Actions doesn't directly expose VNC, you'd typically set up SSH tunneling."
+        echo "However, this workflow focuses on X11 forwarding."
+        echo "If you need VNC, you'd require a different setup involving a VNC server."
+        echo "For X11 forwarding, you would generally use 'ssh -X' or 'ssh -Y' when connecting to a machine where this action is running (not directly to GitHub Actions)."
+
+    - name: Print Xvfb Display
+      run: echo "Xvfb Display is: $DISPLAY"
+
