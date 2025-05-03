@@ -39,14 +39,32 @@ jobs:
       run: |
         fluxbox &
 
-    - name: Run Your Applications
+    - name: Print VNC Connection Instructions
       run: |
-        echo "Starting your applications..."
-        # Example commands:
-        # gnome-terminal &
-        # chromium-browser --no-sandbox &
-        # runOpenFOAMSimulation  # Replace with your actual OpenFOAM command
+        echo "To connect via VNC, follow these steps:"
+        echo "1. Start a VNC viewer (e.g., TigerVNC, RealVNC, or TightVNC)."
+        echo "2. Enter the correct IP address and port for your container."
+        echo "3. Ensure X11 forwarding is correctly set up if using SSH tunneling."
+        echo "4. Use your VNC credentials if required."
+        echo "Note: GitHub Actions does not expose VNC ports by default. If needed, you'd need an SSH tunnel."
 
-    - name: Print Xvfb Display
+    - name: Wait for 3 minutes before stopping container
       run: |
-        echo "Xvfb Display is: $DISPLAY"
+        echo "Waiting for 3 minutes before stopping the container..."
+        sleep 180
+
+    - name: Stop and Remove Container
+      run: |
+        CONTAINER_ID=$(docker ps -q)
+        if [ ! -z "$CONTAINER_ID" ]; then
+          echo "Stopping and removing container: $CONTAINER_ID"
+          docker rm --force "$CONTAINER_ID"
+        fi
+
+    - name: Remove Container Network
+      run: |
+        NETWORK_ID=$(docker network ls | grep github_network | awk '{print $1}')
+        if [ ! -z "$NETWORK_ID" ]; then
+          echo "Removing container network: $NETWORK_ID"
+          docker network rm "$NETWORK_ID"
+        fi
