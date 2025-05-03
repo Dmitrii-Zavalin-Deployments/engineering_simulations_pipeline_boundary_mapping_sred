@@ -22,34 +22,27 @@ jobs:
 
     - name: Set up Xvfb
       run: |
-        sudo Xvfb :99 -screen 0 1280x1024x24 &
-        export DISPLAY=:99
+        Xvfb :99 -screen 0 1280x1024x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
 
     - name: Create .Xauthority
       run: |
         touch ~/.Xauthority
-        xauth qn -db :99 - :0 | xauth -merge -
+        xauth generate :99 . trusted
         chmod 600 ~/.Xauthority
 
     - name: Start Fluxbox (Optional - for visual confirmation)
-      run: fluxbox &
+      run: |
+        fluxbox &
 
-    - name: Run Your Applications (Replace with your actual commands)
+    - name: Run Your Applications
       run: |
         echo "Starting your applications..."
         # Example commands:
         # gnome-terminal &
         # chromium-browser --no-sandbox &
-        # runOpenFOAMSimulation # Replace with your OpenFOAM command
-
-    - name: Get VNC Connection Information
-      run: |
-        echo "To connect via VNC, you might need to forward a local port to the container."
-        echo "Since GitHub Actions doesn't directly expose VNC, you'd typically set up SSH tunneling."
-        echo "However, this workflow focuses on X11 forwarding."
-        echo "If you need VNC, you'd require a different setup involving a VNC server."
-        echo "For X11 forwarding, you would generally use 'ssh -X' or 'ssh -Y' when connecting to a machine where this action is running (not directly to GitHub Actions)."
+        # runOpenFOAMSimulation  # Replace with your actual OpenFOAM command
 
     - name: Print Xvfb Display
-      run: echo "Xvfb Display is: $DISPLAY"
-
+      run: |
+        echo "Xvfb Display is: $DISPLAY"
