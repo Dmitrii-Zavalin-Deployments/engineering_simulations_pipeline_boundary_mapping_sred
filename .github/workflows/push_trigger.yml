@@ -17,8 +17,12 @@ jobs:
           fluxbox \
           gnome-terminal \
           chromium-browser \
-          selenium \
-          openfoam
+          openfoam \
+          python3-pip
+
+    - name: Install Selenium via pip3
+      run: |
+        pip3 install selenium
 
     - name: Set up Xvfb
       run: |
