@@ -11,25 +11,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install OpenFOAM
+      - name: Install Required Dependencies
         run: |
           sudo apt update
-          sudo apt install -y openfoam
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository -y universe
+          sudo apt update
 
-      - name: Set Up OpenFOAM Environment
+      - name: Install OpenFOAM (Official Method)
         run: |
-          if [ -f "/usr/lib/openfoam/openfoam*/etc/bashrc" ]; then
-            source /usr/lib/openfoam/openfoam*/etc/bashrc
-          elif [ -f "/opt/openfoam*/etc/bashrc" ]; then
-            source /opt/openfoam*/etc/bashrc
-          else
-            echo "Error: OpenFOAM installation not found!"
-            exit 1
-          fi
+          sudo apt install -y openfoam2306  # Replace with the latest version available
+          echo "source /usr/lib/openfoam/openfoam2306/etc/bashrc" >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Verify OpenFOAM Installation
+        run: |
+          foamSystemCheck  # Checks if OpenFOAM is correctly installed
+          echo "OpenFOAM installation verified!"
 
       - name: Run CFD Simulation
         run: |
           cd simulation_folder
+          blockMesh  # Example OpenFOAM command, replace with actual simulation steps
           openfoam_command_here
 
       - name: Commit and Push Results
@@ -39,3 +42,7 @@ jobs:
           git add results/*
           git commit -m "Simulation results"
           git push
+
+
+
+
