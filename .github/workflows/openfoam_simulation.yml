@@ -24,13 +24,21 @@ jobs:
 
       - name: Set Up OpenFOAM Environment
         run: |
-          echo "source /opt/openfoam2306/etc/bashrc" >> ~/.bashrc
-          source /opt/openfoam2306/etc/bashrc
-          echo "OpenFOAM environment sourced!"
+          # Find the actual OpenFOAM installation directory
+          OPENFOAM_DIR=$(ls -d /opt/openfoam* 2>/dev/null | tail -n 1)
+          
+          if [ -n "$OPENFOAM_DIR" ]; then
+            echo "source $OPENFOAM_DIR/etc/bashrc" >> ~/.bashrc
+            source $OPENFOAM_DIR/etc/bashrc
+            echo "OpenFOAM environment sourced from $OPENFOAM_DIR!"
+          else
+            echo "Error: OpenFOAM installation directory not found!"
+            exit 1
+          fi
 
       - name: Verify OpenFOAM Installation
         run: |
-          source /opt/openfoam2306/etc/bashrc
+          source ~/.bashrc
           foamVersion  # Alternative verification command
           echo "OpenFOAM installation verified!"
 
