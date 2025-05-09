@@ -8,14 +8,24 @@ jobs:
   run-simulation:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Install OpenFOAM
         run: |
           sudo apt update
           sudo apt install -y openfoam
-          source /opt/openfoam*/etc/bashrc
+
+      - name: Set Up OpenFOAM Environment
+        run: |
+          if [ -f "/usr/lib/openfoam/openfoam*/etc/bashrc" ]; then
+            source /usr/lib/openfoam/openfoam*/etc/bashrc
+          elif [ -f "/opt/openfoam*/etc/bashrc" ]; then
+            source /opt/openfoam*/etc/bashrc
+          else
+            echo "Error: OpenFOAM installation not found!"
+            exit 1
+          fi
 
       - name: Run CFD Simulation
         run: |
@@ -29,6 +39,3 @@ jobs:
           git add results/*
           git commit -m "Simulation results"
           git push
-
-
-
