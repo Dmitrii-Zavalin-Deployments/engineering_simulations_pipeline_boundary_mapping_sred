@@ -26,24 +26,20 @@ jobs:
         run: |
           dpkg -l | grep openfoam || (echo "Error: OpenFOAM installation failed!" && exit 1)
 
-      - name: Locate OpenFOAM Path and Set Environment
+      - name: Locate OpenFOAM Environment and Source It
         run: |
-          OPENFOAM_DIR=$(find /opt -maxdepth 1 -type d -name "openfoam*" | head -n 1)
+          # Use OpenFOAM selector tool to activate the correct version
+          OPENFOAM_VERSION=$(openfoam-selector --list | tail -n 1)
 
-          if [ -d "$OPENFOAM_DIR" ]; then
-            echo "source $OPENFOAM_DIR/etc/bashrc" >> ~/.bashrc
-            source $OPENFOAM_DIR/etc/bashrc
-            echo "OpenFOAM environment sourced from $OPENFOAM_DIR!"
+          if [ -n "$OPENFOAM_VERSION" ]; then
+            source /usr/lib/openfoam/$OPENFOAM_VERSION/etc/bashrc
+            echo "OpenFOAM version $OPENFOAM_VERSION sourced successfully!"
           else
-            echo "Error: OpenFOAM directory not found! Checking alternative locations..."
+            echo "Error: OpenFOAM version not found! Checking alternative locations..."
             exit 1
           fi
 
       - name: Verify OpenFOAM Setup
         run: |
-          source ~/.bashrc
           foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
           echo "OpenFOAM installation verified!"
-
-
-
