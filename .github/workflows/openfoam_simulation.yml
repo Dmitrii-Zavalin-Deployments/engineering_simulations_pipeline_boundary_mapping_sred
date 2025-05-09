@@ -26,17 +26,14 @@ jobs:
         run: |
           dpkg -l | grep openfoam || (echo "Error: OpenFOAM installation failed!" && exit 1)
 
-      - name: Set OpenFOAM Environment
+      - name: Manually Source OpenFOAM
         run: |
-          openfoam-selector --set openfoam2306
-          . /usr/lib/openfoam/openfoam2306/etc/bashrc
-          echo "OpenFOAM environment set successfully!"
+          echo "source /usr/lib/openfoam/openfoam2306/etc/bashrc" >> ~/.bashrc
+          . /usr/lib/openfoam/openfoam2306/etc/bashrc || (echo "Error: OpenFOAM environment sourcing failed!" && exit 1)
+          echo "OpenFOAM environment sourced manually!"
 
       - name: Verify OpenFOAM Setup
         run: |
           . /usr/lib/openfoam/openfoam2306/etc/bashrc
           foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
           echo "OpenFOAM installation verified!"
-
-
-
