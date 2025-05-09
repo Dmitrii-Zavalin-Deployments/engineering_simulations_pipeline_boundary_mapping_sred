@@ -1,8 +1,8 @@
-name: OpenFOAM Docker Simulation
+name: OpenFOAM Dropbox Automation
 on:
   push:
     branches:
-      - '**'  # Runs on push to any branch
+      - '**'
 
 jobs:
   run-openfoam:
@@ -29,10 +29,14 @@ jobs:
           docker pull opencfd/openfoam-run:2306
           echo "OpenFOAM Docker image pulled successfully!"
 
-      - name: Run OpenFOAM Simulation in Docker
+      - name: Install Python Dependencies
         run: |
-          docker run --rm -v $PWD:/workspace -w /workspace opencfd/openfoam-run:2306 blockMesh -help
-          echo "OpenFOAM command executed inside Docker!"
+          pip install dropbox  # Ensure Dropbox module is installed
+
+      - name: Run OpenFOAM Processing Script
+        run: |
+          python openfoam_process.py
+          echo "OpenFOAM processing completed!"
 
 
 
