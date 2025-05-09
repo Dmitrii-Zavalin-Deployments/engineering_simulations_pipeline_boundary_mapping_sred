@@ -26,7 +26,21 @@ jobs:
         run: |
           dpkg -l | grep openfoam || (echo "Error: OpenFOAM installation failed!" && exit 1)
 
-      - name: Run OpenFOAM Using Its Executable Path
+      - name: Set OpenFOAM Environment
         run: |
-          /usr/bin/openfoam2306 foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
+          export OPENFOAM_PATH="/usr/lib/openfoam/openfoam2306"
+          export PATH="$OPENFOAM_PATH/bin:$OPENFOAM_PATH/wmake:$PATH"
+          export FOAM_INST_DIR="/usr/lib/openfoam"
+          export WM_PROJECT_DIR="$OPENFOAM_PATH"
+          export WM_THIRD_PARTY_DIR="$OPENFOAM_PATH/ThirdParty"
+
+          echo "source $OPENFOAM_PATH/etc/bashrc" >> ~/.bashrc
+          . $OPENFOAM_PATH/etc/bashrc || (echo "Error: OpenFOAM environment sourcing failed!" && exit 1)
+          echo "OpenFOAM environment set successfully!"
+
+      - name: Verify OpenFOAM Setup
+        run: |
+          . ~/.bashrc
+          echo "Checking OpenFOAM version..."
+          foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
           echo "OpenFOAM installation verified!"
