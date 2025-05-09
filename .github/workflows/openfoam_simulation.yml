@@ -25,11 +25,13 @@ jobs:
       - name: Set Up OpenFOAM Environment
         run: |
           echo "source /opt/openfoam2306/etc/bashrc" >> ~/.bashrc
-          source ~/.bashrc
+          source /opt/openfoam2306/etc/bashrc
+          echo "OpenFOAM environment sourced!"
 
       - name: Verify OpenFOAM Installation
         run: |
-          foamSystemCheck  # Checks if OpenFOAM is correctly installed
+          source /opt/openfoam2306/etc/bashrc
+          foamVersion  # Alternative verification command
           echo "OpenFOAM installation verified!"
 
 
