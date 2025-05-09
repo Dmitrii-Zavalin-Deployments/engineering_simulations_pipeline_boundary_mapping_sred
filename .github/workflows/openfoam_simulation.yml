@@ -20,22 +20,37 @@ jobs:
         run: |
           curl -s https://dl.openfoam.com/add-debian-repo.sh | sudo bash
           sudo apt update
-          sudo apt install -y openfoam2306-default  # Install the full package
+          sudo apt install -y openfoam2306-default  # Ensures the full installation
 
       - name: Verify OpenFOAM Installation
         run: |
           dpkg -l | grep openfoam || (echo "Error: OpenFOAM installation failed!" && exit 1)
 
-      - name: Run OpenFOAM Using Shell Wrapper
+      - name: Manually Set OpenFOAM Environment
         run: |
-          if [ -x "/usr/bin/openfoam2306" ]; then
-            echo "Using OpenFOAM shell session wrapper..."
-            /usr/bin/openfoam2306 foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
-            echo "OpenFOAM installation verified!"
+          export OPENFOAM_PATH="/usr/lib/openfoam/openfoam2306"
+          export PATH="$OPENFOAM_PATH/platforms/linux64GccDPInt32Opt/bin:$PATH"
+          export WM_PROJECT_DIR="$OPENFOAM_PATH"
+
+          if [ -f "$OPENFOAM_PATH/etc/bashrc" ]; then
+            echo "Sourcing OpenFOAM environment..."
+            . $OPENFOAM_PATH/etc/bashrc || (echo "Error: OpenFOAM sourcing failed!" && exit 1)
+            echo "OpenFOAM environment set successfully!"
           else
-            echo "Error: OpenFOAM shell session wrapper not found!"
+            echo "Error: OpenFOAM configuration file not found!"
             exit 1
           fi
+
+      - name: Test OpenFOAM Commands
+        run: |
+          which simpleFoam || (echo "Error: simpleFoam not found!" && exit 1)
+          echo "OpenFOAM commands are accessible!"
+
+      - name: Verify OpenFOAM Execution
+        run: |
+          . /usr/lib/openfoam/openfoam2306/etc/bashrc
+          simpleFoam -help || (echo "Error: OpenFOAM execution failed!" && exit 1)
+          echo "OpenFOAM installation verified!"
 
 
 
