@@ -11,7 +11,7 @@ LOCAL_OUTPUT_FOLDER = "./OpenFOAMOutputFiles"
 LOG_FILE_PATH = "./download_log.txt"
 
 def prepare_openfoam_files():
-    """Downloads OpenFOAM case files from Dropbox and prepares them for simulation."""
+    """Downloads OpenFOAM case files from Dropbox and ensures they exist before running the simulation."""
     
     print("Starting OpenFOAM case file download process...")
     
@@ -26,6 +26,11 @@ def prepare_openfoam_files():
     os.makedirs(LOCAL_INPUT_FOLDER, exist_ok=True)
 
     download_files_from_dropbox(DROPBOX_INPUT_FOLDER, LOCAL_INPUT_FOLDER, REFRESH_TOKEN, CLIENT_ID, CLIENT_SECRET, LOG_FILE_PATH)
+
+    # Check if files were downloaded successfully
+    if not os.listdir(LOCAL_INPUT_FOLDER):
+        print(f"Error: No case files found in {LOCAL_INPUT_FOLDER}. Simulation cannot proceed.")
+        sys.exit(1)
 
     print("OpenFOAM case files downloaded successfully!")
 
