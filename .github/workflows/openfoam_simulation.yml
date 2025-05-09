@@ -11,9 +11,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Fix Package Conflicts
+        run: |
+          sudo apt-get remove -y containerd containerd.io || echo "No containerd packages found."
+          sudo apt-get autoremove -y
+          sudo apt-get update
+
       - name: Install Docker
         run: |
-          sudo apt update
           sudo apt install -y docker.io
           sudo systemctl start docker
           sudo systemctl enable docker
