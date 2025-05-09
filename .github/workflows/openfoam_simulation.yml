@@ -2,7 +2,7 @@ name: OpenFOAM Simulation
 on:
   push:
     branches:
-      - main
+      - '**'  # Runs on push to any branch
 
 jobs:
   run-simulation:
@@ -28,7 +28,7 @@ jobs:
           git config --global user.email "actions@github.com"
           git add results/*
           git commit -m "Simulation results"
-          git push origin main
+          git push
 
 
 
