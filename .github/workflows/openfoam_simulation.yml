@@ -26,20 +26,23 @@ jobs:
         run: |
           dpkg -l | grep openfoam || (echo "Error: OpenFOAM installation failed!" && exit 1)
 
-      - name: Source OpenFOAM Before Running Commands
+      - name: Source OpenFOAM Environment Properly
         run: |
-          if [ -f "/usr/lib/openfoam/openfoam2306/etc/bashrc" ]; then
+          OPENFOAM_PATH="/usr/lib/openfoam/openfoam2306"
+          if [ -f "$OPENFOAM_PATH/etc/bashrc" ]; then
             echo "Sourcing OpenFOAM environment..."
-            . /usr/lib/openfoam/openfoam2306/etc/bashrc
+            . $OPENFOAM_PATH/etc/bashrc
+          elif [ -x "/usr/bin/openfoam2306" ]; then
+            echo "Using OpenFOAM shell session wrapper..."
+            /usr/bin/openfoam2306 foamVersion
           else
-            echo "Error: OpenFOAM environment file not found!"
+            echo "Error: OpenFOAM installation not found!"
             exit 1
           fi
 
       - name: Verify OpenFOAM Setup
         run: |
-          . /usr/lib/openfoam/openfoam2306/etc/bashrc
-          export PATH="/usr/lib/openfoam/openfoam2306/platforms/linux64GccDPInt32Opt/bin:$PATH"
+          . /usr/lib/openfoam/openfoam2306/etc/bashrc || (echo "Error: OpenFOAM sourcing failed!" && exit 1)
           echo "Checking OpenFOAM version..."
-          /usr/lib/openfoam/openfoam2306/platforms/linux64GccDPInt32Opt/bin/foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
+          foamVersion || (echo "Error: OpenFOAM verification failed!" && exit 1)
           echo "OpenFOAM installation verified!"
