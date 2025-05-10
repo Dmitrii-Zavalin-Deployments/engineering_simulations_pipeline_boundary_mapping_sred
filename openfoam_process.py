@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 from download_dropbox_files import download_files_from_dropbox
 
@@ -21,13 +20,12 @@ def prepare_openfoam_files():
 
     if not all([REFRESH_TOKEN, CLIENT_ID, CLIENT_SECRET]):
         print("⚠️ Warning: Missing Dropbox credentials! Ensure secrets are set in GitHub Actions.")
-        return False  # Allow execution to continue but notify the issue
+        return False  
 
     os.makedirs(LOCAL_INPUT_FOLDER, exist_ok=True)
 
     download_files_from_dropbox(DROPBOX_INPUT_FOLDER, LOCAL_INPUT_FOLDER, REFRESH_TOKEN, CLIENT_ID, CLIENT_SECRET, LOG_FILE_PATH)
 
-    # Check if files were downloaded successfully
     if not os.listdir(LOCAL_INPUT_FOLDER):
         print(f"⚠️ Warning: No case files found in {LOCAL_INPUT_FOLDER}. Simulation will be skipped.")
         return False
@@ -51,12 +49,7 @@ def generate_mesh():
         "-w", "/workspace/input",
         "opencfd/openfoam-run:2306",
         "/bin/bash", "-c",
-        "source /opt/openfoam10/etc/bashrc && "
-        "blockMesh && "
-        "surfaceFeatureExtract && "
-        "snappyHexMesh -overwrite && "
-        "checkMesh && "
-        "cp -r constant/polyMesh /workspace/output/"
+        'source /opt/openfoam10/etc/bashrc && blockMesh && surfaceFeatureExtract && snappyHexMesh -overwrite && checkMesh && cp -r constant/polyMesh /workspace/output/'
     ]
 
     try:
@@ -100,8 +93,7 @@ def run_openfoam_simulation():
         "-w", "/workspace/input",
         "opencfd/openfoam-run:2306",
         "/bin/bash", "-c",
-        "source /opt/openfoam10/etc/bashrc && "
-        "simpleFoam"
+        'source /opt/openfoam10/etc/bashrc && simpleFoam'
     ]
 
     try:
@@ -112,7 +104,7 @@ def run_openfoam_simulation():
 
 if __name__ == "__main__":
     if prepare_openfoam_files():
-        generate_mesh()  # Generate mesh before running simulation
+        generate_mesh()  
         run_openfoam_simulation()
     retrieve_simulation_results()
 
