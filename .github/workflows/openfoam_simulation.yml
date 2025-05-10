@@ -1,8 +1,10 @@
 name: OpenFOAM Dropbox Automation
+
 on:
   push:
     branches:
       - '**'
+  workflow_dispatch:  # This allows manual execution from GitHub Actions UI
 
 jobs:
   run-openfoam:
