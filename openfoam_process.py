@@ -35,6 +35,36 @@ def prepare_openfoam_files():
     print("✅ OpenFOAM case files downloaded successfully!")
     return True
 
+def generate_mesh():
+    """Runs mesh generation using blockMesh and snappyHexMesh inside OpenFOAM Docker container."""
+    
+    print("Generating OpenFOAM mesh in Docker container...")
+
+    if not os.listdir(LOCAL_INPUT_FOLDER):
+        print("⚠️ Warning: No case files present. Skipping mesh generation.")
+        return
+
+    docker_command = [
+        "docker", "run", "--rm",
+        "-v", f"{os.path.abspath(LOCAL_INPUT_FOLDER)}:/workspace/input",
+        "-v", f"{os.path.abspath(LOCAL_OUTPUT_FOLDER)}:/workspace/output",
+        "-w", "/workspace/input",
+        "opencfd/openfoam-run:2306",
+        "/bin/bash", "-c",
+        "source /opt/openfoam10/etc/bashrc && "
+        "blockMesh && "
+        "surfaceFeatureExtract && "
+        "snappyHexMesh -overwrite && "
+        "checkMesh && "
+        "cp -r constant/polyMesh /workspace/output/"
+    ]
+
+    try:
+        subprocess.run(docker_command, check=True)
+        print("✅ Mesh generation completed successfully!")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️ Warning: Mesh generation encountered an issue: {e}")
+
 def retrieve_simulation_results():
     """Retrieves OpenFOAM simulation results from Dropbox."""
     
@@ -55,7 +85,7 @@ def retrieve_simulation_results():
     print("✅ Simulation results retrieved successfully!")
 
 def run_openfoam_simulation():
-    """Runs OpenFOAM inside a Docker container with the downloaded case files."""
+    """Runs OpenFOAM inside a Docker container after mesh generation."""
 
     print("Running OpenFOAM simulation in Docker...")
 
@@ -67,9 +97,11 @@ def run_openfoam_simulation():
         "docker", "run", "--rm",
         "-v", f"{os.path.abspath(LOCAL_INPUT_FOLDER)}:/workspace/input",
         "-v", f"{os.path.abspath(LOCAL_OUTPUT_FOLDER)}:/workspace/output",
-        "-w", "/workspace",
+        "-w", "/workspace/input",
         "opencfd/openfoam-run:2306",
-        "blockMesh"
+        "/bin/bash", "-c",
+        "source /opt/openfoam10/etc/bashrc && "
+        "simpleFoam"
     ]
 
     try:
@@ -80,6 +112,7 @@ def run_openfoam_simulation():
 
 if __name__ == "__main__":
     if prepare_openfoam_files():
+        generate_mesh()  # Generate mesh before running simulation
         run_openfoam_simulation()
     retrieve_simulation_results()
 
