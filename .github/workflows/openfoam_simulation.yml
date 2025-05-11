@@ -32,14 +32,31 @@ jobs:
         run: |
           pip install dropbox  # Ensure Dropbox module is installed
 
-      - name: Run OpenFOAM Processing Script with Virtual X Server
+      - name: Retrieve `geometry.stl` from Dropbox
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: |
-          xvfb-run -a python openfoam_process.py  # Runs the Python script inside a virtual display
-          echo "OpenFOAM processing completed successfully!"
+          xvfb-run -a python retrieve_files.py  # Downloads geometry.stl into the correct folder
+          echo "Geometry file retrieved successfully!"
 
+      - name: Generate Computational Mesh (`polyMesh`) using OpenFOAM
+        run: |
+          xvfb-run -a python openfoam_process.py  # Runs the mesh generation script
+          echo "OpenFOAM mesh generation completed!"
 
+      - name: Validate Generated Mesh (`checkMesh`)
+        run: |
+          docker run --rm -v $(pwd)/OpenFOAMOutputFiles:/workspace/output \
+          opencfd/openfoam-run:2306 bash -c "checkMesh constant/polyMesh"
+          echo "Mesh validation complete!"
 
+      - name: Store `polyMesh` in Dropbox for Simulation Processing
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.APP_SECRET }}
+        run: |
+          xvfb-run -a python store_mesh.py  # Uploads finalized polyMesh to Dropbox
+          echo "PolyMesh stored for simulation processing!"
