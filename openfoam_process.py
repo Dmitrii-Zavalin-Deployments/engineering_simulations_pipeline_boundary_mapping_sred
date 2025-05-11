@@ -49,7 +49,12 @@ def generate_mesh():
         "-w", "/workspace/input",
         "opencfd/openfoam-run:2306",
         "/bin/bash", "-c",
-        'source /opt/openfoam10/etc/bashrc && blockMesh && surfaceFeatureExtract && snappyHexMesh -overwrite && checkMesh && cp -r constant/polyMesh /workspace/output/'
+        "source /opt/openfoam10/etc/bashrc && "
+        "blockMesh && "
+        "surfaceFeatureExtract && "
+        "snappyHexMesh -overwrite && "
+        "checkMesh && "
+        "cp -r constant/polyMesh /workspace/output/"
     ]
 
     try:
@@ -93,7 +98,7 @@ def run_openfoam_simulation():
         "-w", "/workspace/input",
         "opencfd/openfoam-run:2306",
         "/bin/bash", "-c",
-        'source /opt/openfoam10/etc/bashrc && simpleFoam'
+        "source /opt/openfoam10/etc/bashrc && simpleFoam"
     ]
 
     try:
