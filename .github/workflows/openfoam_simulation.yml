@@ -32,6 +32,12 @@ jobs:
         run: |
           pip install dropbox  # Ensure Dropbox module is installed
 
+      - name: Create Necessary Folders
+        run: |
+          mkdir -p OpenFOAMInputFiles
+          mkdir -p OpenFOAMOutputFiles
+          echo "✅ Ensured OpenFOAMInputFiles and OpenFOAMOutputFiles directories exist!"
+
       - name: Retrieve `geometry.stl` from Dropbox
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
