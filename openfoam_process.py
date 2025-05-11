@@ -68,7 +68,7 @@ def generate_mesh():
 
     # Step 4: Use `xvfb-run` for GUI-dependent OpenFOAM tools
     openfoam_script = """
-    source /opt/openfoam10/etc/bashrc
+    source /etc/bashrc || source /usr/lib/openfoam/openfoam10/etc/bashrc
     xvfb-run -a blockMesh
     xvfb-run -a surfaceFeatureExtract
     xvfb-run -a snappyHexMesh -overwrite
@@ -129,7 +129,7 @@ def run_openfoam_simulation():
     print("✅ OpenFOAM container started for simulation: openfoam_simulation")
 
     # Source OpenFOAM environment
-    subprocess.run(["docker", "exec", "openfoam_simulation", "bash", "-c", "source /opt/openfoam10/etc/bashrc"], check=True)
+    subprocess.run(["docker", "exec", "openfoam_simulation", "bash", "-c", "source /etc/bashrc || source /usr/lib/openfoam/openfoam10/etc/bashrc"], check=True)
 
     # Run the OpenFOAM solver (`simpleFoam`)
     subprocess.run(["docker", "exec", "openfoam_simulation", "xvfb-run", "-a", "simpleFoam"], check=True)
