@@ -1,10 +1,7 @@
 name: OpenFOAM Dropbox Automation
 
 on:
-  push:
-    branches:
-      - '**'
-  workflow_dispatch:  # This allows manual execution from GitHub Actions UI
+  workflow_dispatch:  # Allows manual execution from GitHub Actions UI
 
 jobs:
   run-openfoam:
@@ -19,12 +16,12 @@ jobs:
           sudo apt-get autoremove -y
           sudo apt-get update
 
-      - name: Install Docker
+      - name: Install Dependencies (Docker, OpenFOAM, Xvfb)
         run: |
-          sudo apt install -y docker.io
+          sudo apt install -y docker.io xvfb openfoam
           sudo systemctl start docker
           sudo systemctl enable docker
-          echo "Docker installed and running!"
+          echo "Docker, OpenFOAM, and Xvfb installed successfully!"
 
       - name: Pull OpenFOAM Docker Image
         run: |
@@ -35,14 +32,14 @@ jobs:
         run: |
           pip install dropbox  # Ensure Dropbox module is installed
 
-      - name: Run OpenFOAM Processing Script
+      - name: Run OpenFOAM Processing Script with Virtual X Server
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: |
-          python openfoam_process.py
-          echo "OpenFOAM processing completed!"
+          xvfb-run -a python openfoam_process.py  # Runs the Python script inside a virtual display
+          echo "OpenFOAM processing completed successfully!"
 
 
 
