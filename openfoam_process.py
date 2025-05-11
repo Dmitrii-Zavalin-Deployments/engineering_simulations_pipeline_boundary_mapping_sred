@@ -34,7 +34,7 @@ def prepare_openfoam_files():
     return True
 
 def generate_mesh():
-    """Runs mesh generation using OpenFOAM inside Docker with proper container validation."""
+    """Runs OpenFOAM mesh generation in a headless environment using xvfb-run."""
     
     print("Generating OpenFOAM mesh in Docker container...")
 
@@ -42,42 +42,49 @@ def generate_mesh():
         print("⚠️ Warning: No case files present. Skipping mesh generation.")
         return
 
-    # Step 1: Start Docker container without interactive mode (Remove `-it`)
-    container_id = subprocess.run([
-        "docker", "run", "-d", "--rm",
+    # Step 1: Stop any previous OpenFOAM container to prevent conflicts
+    subprocess.run(["docker", "stop", "openfoam_container"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["docker", "rm", "openfoam_container"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Step 2: Start a new named Docker container (`openfoam_container`)
+    subprocess.run([
+        "docker", "run", "-d", "--rm", "--name", "openfoam_container",
         "-v", f"{os.path.abspath(LOCAL_INPUT_FOLDER)}:/workspace/input",
         "-v", f"{os.path.abspath(LOCAL_OUTPUT_FOLDER)}:/workspace/output",
         "-w", "/workspace/input",
-        "opencfd/openfoam-run:2306", "/bin/bash", "-c", "sleep infinity"
-    ], capture_output=True, text=True).stdout.strip()
+        "opencfd/openfoam-run:2306",
+        "sleep", "infinity"  # Keeps container running for execution
+    ], check=True)
 
-    if not container_id:
-        print("⚠️ Error: Failed to start OpenFOAM container.")
-        return
+    print("✅ OpenFOAM container started: openfoam_container")
 
-    print(f"✅ OpenFOAM container started: {container_id}")
-
-    # Step 2: Verify if the container is still running
-    running_check = subprocess.run(["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.ID}}"], capture_output=True, text=True).stdout.strip()
+    # Step 3: Verify if the container is running before proceeding
+    running_check = subprocess.run(["docker", "ps", "--filter", "name=openfoam_container", "--format", "{{.ID}}"],
+                                   capture_output=True, text=True).stdout.strip()
     
     if not running_check:
-        print(f"⚠️ Error: Container {container_id} stopped unexpectedly.")
+        print(f"⚠️ Error: OpenFOAM container stopped unexpectedly.")
         return
 
-    # Step 3: Run OpenFOAM environment setup inside the container (Remove `-it`)
-    subprocess.run(["docker", "exec", container_id, "bash", "-c", "source /opt/openfoam10/etc/bashrc"], check=True)
+    # Step 4: Use `xvfb-run` for GUI-dependent OpenFOAM tools
+    openfoam_script = """
+    source /opt/openfoam10/etc/bashrc
+    xvfb-run -a blockMesh
+    xvfb-run -a surfaceFeatureExtract
+    xvfb-run -a snappyHexMesh -overwrite
+    xvfb-run -a checkMesh
+    cp -r constant/polyMesh /workspace/output/
+    """
 
-    # Step 4: Execute mesh generation commands separately (Remove `-it`)
-    subprocess.run(["docker", "exec", container_id, "blockMesh"], check=True)
-    subprocess.run(["docker", "exec", container_id, "surfaceFeatureExtract"], check=True)
-    subprocess.run(["docker", "exec", container_id, "snappyHexMesh", "-overwrite"], check=True)
-    subprocess.run(["docker", "exec", container_id, "checkMesh"], check=True)
+    # Step 5: Copy the script into the container and execute it
+    with open("openfoam_commands.sh", "w") as script_file:
+        script_file.write(openfoam_script)
 
-    # Step 5: Copy generated mesh (`polyMesh`) back to Dropbox output folder (Remove `-it`)
-    subprocess.run(["docker", "exec", container_id, "bash", "-c", "cp -r constant/polyMesh /workspace/output/"], check=True)
+    subprocess.run(["docker", "cp", "openfoam_commands.sh", "openfoam_container:/workspace/input/openfoam_commands.sh"], check=True)
+    subprocess.run(["docker", "exec", "openfoam_container", "bash", "-c", "chmod +x /workspace/input/openfoam_commands.sh && /workspace/input/openfoam_commands.sh"], check=True)
 
-    # Step 6: Stop the container properly
-    subprocess.run(["docker", "stop", container_id], check=True)
+    # Step 6: Stop the container after execution
+    subprocess.run(["docker", "stop", "openfoam_container"], check=True)
 
     print("✅ Mesh generation completed successfully!")
 
@@ -109,29 +116,26 @@ def run_openfoam_simulation():
         print("⚠️ Warning: No case files present. Skipping OpenFOAM execution.")
         return
 
-    # Start a new container for the simulation (Remove `-it`)
-    container_id = subprocess.run([
-        "docker", "run", "-d", "--rm",
+    # Start a new container for the simulation (Using `xvfb-run`)
+    subprocess.run([
+        "docker", "run", "-d", "--rm", "--name", "openfoam_simulation",
         "-v", f"{os.path.abspath(LOCAL_INPUT_FOLDER)}:/workspace/input",
         "-v", f"{os.path.abspath(LOCAL_OUTPUT_FOLDER)}:/workspace/output",
         "-w", "/workspace/input",
-        "opencfd/openfoam-run:2306", "/bin/bash", "-c", "sleep infinity"
-    ], capture_output=True, text=True).stdout.strip()
+        "opencfd/openfoam-run:2306",
+        "sleep", "infinity"
+    ], check=True)
 
-    if not container_id:
-        print("⚠️ Error: Failed to start OpenFOAM container.")
-        return
-
-    print(f"✅ OpenFOAM container started for simulation: {container_id}")
+    print("✅ OpenFOAM container started for simulation: openfoam_simulation")
 
     # Source OpenFOAM environment
-    subprocess.run(["docker", "exec", container_id, "bash", "-c", "source /opt/openfoam10/etc/bashrc"], check=True)
+    subprocess.run(["docker", "exec", "openfoam_simulation", "bash", "-c", "source /opt/openfoam10/etc/bashrc"], check=True)
 
-    # Run the OpenFOAM solver
-    subprocess.run(["docker", "exec", container_id, "simpleFoam"], check=True)
+    # Run the OpenFOAM solver (`simpleFoam`)
+    subprocess.run(["docker", "exec", "openfoam_simulation", "xvfb-run", "-a", "simpleFoam"], check=True)
 
     # Stop the container after completion
-    subprocess.run(["docker", "stop", container_id], check=True)
+    subprocess.run(["docker", "stop", "openfoam_simulation"], check=True)
 
     print("✅ OpenFOAM simulation executed successfully!")
 
