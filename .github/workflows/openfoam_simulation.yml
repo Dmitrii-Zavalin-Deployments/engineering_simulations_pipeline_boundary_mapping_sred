@@ -16,12 +16,12 @@ jobs:
           sudo apt-get autoremove -y
           sudo apt-get update
 
-      - name: Install Dependencies (Docker, OpenFOAM, Xvfb)
+      - name: Install Dependencies (Docker & OpenFOAM)
         run: |
-          sudo apt install -y docker.io xvfb openfoam
+          sudo apt install -y docker.io openfoam
           sudo systemctl start docker
           sudo systemctl enable docker
-          echo "Docker, OpenFOAM, and Xvfb installed successfully!"
+          echo "Docker and OpenFOAM installed successfully!"
 
       - name: Pull OpenFOAM Docker Image
         run: |
@@ -38,12 +38,12 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: |
-          xvfb-run -a python retrieve_files.py  # Downloads geometry.stl into the correct folder
+          python retrieve_files.py  # Downloads geometry.stl into the correct folder
           echo "Geometry file retrieved successfully!"
 
       - name: Generate Computational Mesh (`polyMesh`) using OpenFOAM
         run: |
-          xvfb-run -a python openfoam_process.py  # Runs the mesh generation script
+          python openfoam_process.py  # Runs the mesh generation script
           echo "OpenFOAM mesh generation completed!"
 
       - name: Validate Generated Mesh (`checkMesh`)
@@ -58,5 +58,8 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.APP_SECRET }}
         run: |
-          xvfb-run -a python store_mesh.py  # Uploads finalized polyMesh to Dropbox
+          python store_mesh.py  # Uploads finalized polyMesh to Dropbox
           echo "PolyMesh stored for simulation processing!"
+
+
+
