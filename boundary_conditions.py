@@ -9,7 +9,13 @@ def load_config(config_file):
     """Loads inlet and outlet boundary condition values from external JSON, with error handling."""
     try:
         with open(config_file, "r") as f:
-            return json.load(f)
+            config = json.load(f)
+            
+            # Ensure pressure values are non-negative
+            config["inlet"]["pressure"] = max(config["inlet"]["pressure"], 0)
+            config["outlet"]["pressure"] = max(config["outlet"]["pressure"], 0)
+            
+            return config
     except (FileNotFoundError, json.JSONDecodeError):
         print(f"⚠️ Configuration file {config_file} not found or invalid. Using default values.")
         return {
@@ -73,7 +79,6 @@ if __name__ == "__main__":
 
     mesh_file = sys.argv[1]
     generate_boundary_conditions(mesh_file)
-
 
 
 
