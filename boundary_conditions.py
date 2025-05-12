@@ -1,34 +1,49 @@
 import json
 import sys
 import pyvista as pv
+import numpy as np
 
 def generate_boundary_conditions(mesh_file, output_file="testing-input-output/boundary_conditions.json"):
-    """Processes the mesh and creates a structured boundary condition JSON file."""
+    """Processes the mesh and creates a structured boundary condition JSON file using improved region detection."""
 
     # Load the mesh
     mesh = pv.read(mesh_file)
 
-    # Example logic: Identify boundary regions based on surface normals or position
+    # Verify Mesh Properties
+    print(f"🔍 Loaded Mesh: {mesh}")
+
+    # Initialize Boundary Conditions Structure
     boundary_conditions = {
         "inlet": {"region_id": [], "velocity": [1.0, 0.0, 0.0]},
         "outlet": {"region_id": [], "pressure": 101325},
         "walls": {"region_id": [], "no_slip": True}
     }
 
-    # Example: Loop through mesh points and assign regions (simplified)
+    # Compute Percentiles for Improved Boundary Detection
+    z_min = np.percentile(mesh.points[:, 2], 5)  # Lower 5% of points → Inlet
+    z_max = np.percentile(mesh.points[:, 2], 95)  # Upper 5% of points → Outlet
+
+    # Extract Surface Normals for Wall Detection
+    if mesh.n_points > 0:
+        normals = mesh.point_normals
+    else:
+        print("⚠️ No surface normals found. Wall detection might be inaccurate.")
+        normals = None
+
+    # Assign Boundary Regions
     for i, point in enumerate(mesh.points):
-        if point[2] > 0.9:  # Example condition: top surface is the outlet
+        if point[2] > z_max:  # Outlet (Upper region)
             boundary_conditions["outlet"]["region_id"].append(i)
-        elif point[2] < 0.1:  # Example condition: bottom surface is the inlet
+        elif point[2] < z_min:  # Inlet (Lower region)
             boundary_conditions["inlet"]["region_id"].append(i)
-        else:
+        elif normals is not None and abs(normals[i][2]) < 0.2:  # Walls (Mostly vertical surfaces)
             boundary_conditions["walls"]["region_id"].append(i)
 
-    # Save boundary conditions to JSON
+    # Save Boundary Conditions to JSON
     with open(output_file, "w") as f:
         json.dump(boundary_conditions, f, indent=4)
 
-    # ✅ Print JSON to logs for visibility
+    # ✅ Print JSON to Logs for Visibility
     print("\n🔹 Generated Boundary Conditions:")
     print(json.dumps(boundary_conditions, indent=4))
 
@@ -41,5 +56,6 @@ if __name__ == "__main__":
 
     mesh_file = sys.argv[1]
     generate_boundary_conditions(mesh_file)
+
 
 
