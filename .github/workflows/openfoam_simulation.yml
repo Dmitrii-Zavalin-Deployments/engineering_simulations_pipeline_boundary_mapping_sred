@@ -1,71 +1,30 @@
-name: OpenFOAM Dropbox Automation
+name: Boundary Condition Generation  # Workflow name
 
 on:
-  workflow_dispatch:  # Allows manual execution from GitHub Actions UI
+  push:  # ✅ Runs on every commit to any branch
+  workflow_dispatch:  # ✅ Allows manual triggering too
 
 jobs:
-  run-openfoam:
+  generate-boundary-conditions:
     runs-on: ubuntu-latest
     steps:
+
+      # 1️⃣ Step: Checkout the Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Fix Package Conflicts
+      # 2️⃣ Step: Verify `.obj` File Exists in `testing-input-output/`
+      - name: Check if `testing-Body.obj` is present
         run: |
-          sudo apt-get remove -y containerd containerd.io || echo "No containerd packages found."
-          sudo apt-get autoremove -y
-          sudo apt-get update
+          ls -l ./testing-input-output/
 
-      - name: Install Dependencies (Docker & OpenFOAM)
+      # 3️⃣ Step: Run Python Script to Create `boundary_conditions.json`
+      # ✅ Passes `testing-Body.obj` as an argument to `boundary_conditions.py`
+      - name: Generate Boundary Conditions from `testing-Body.obj`
         run: |
-          sudo apt install -y docker.io openfoam
-          sudo systemctl start docker
-          sudo systemctl enable docker
-          echo "Docker and OpenFOAM installed successfully!"
+          python boundary_conditions.py ./testing-input-output/testing-Body.obj
 
-      - name: Pull OpenFOAM Docker Image
+      # Debugging: Verify `boundary_conditions.json` File Creation
+      - name: Verify `boundary_conditions.json` File Creation
         run: |
-          docker pull opencfd/openfoam-run:2306
-          echo "OpenFOAM Docker image pulled successfully!"
-
-      - name: Install Python Dependencies
-        run: |
-          pip install dropbox  # Ensure Dropbox module is installed
-
-      - name: Create Necessary Folders
-        run: |
-          mkdir -p OpenFOAMInputFiles
-          mkdir -p OpenFOAMOutputFiles
-          echo "✅ Ensured OpenFOAMInputFiles and OpenFOAMOutputFiles directories exist!"
-
-      - name: Retrieve `geometry.stl` from Dropbox
-        env:
-          APP_KEY: ${{ secrets.APP_KEY }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-        run: |
-          python retrieve_files.py  # Downloads geometry.stl into the correct folder
-          echo "Geometry file retrieved successfully!"
-
-      - name: Generate Computational Mesh (`polyMesh`) using OpenFOAM
-        run: |
-          python openfoam_process.py  # Runs the mesh generation script
-          echo "OpenFOAM mesh generation completed!"
-
-      - name: Validate Generated Mesh (`checkMesh`)
-        run: |
-          docker run --rm -v $(pwd)/OpenFOAMOutputFiles:/workspace/output \
-          opencfd/openfoam-run:2306 bash -c "checkMesh constant/polyMesh"
-          echo "Mesh validation complete!"
-
-      - name: Store `polyMesh` in Dropbox for Simulation Processing
-        env:
-          APP_KEY: ${{ secrets.APP_KEY }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.APP_SECRET }}
-        run: |
-          python store_mesh.py  # Uploads finalized polyMesh to Dropbox
-          echo "PolyMesh stored for simulation processing!"
-
-
-
+          ls -l ./testing-input-output/
