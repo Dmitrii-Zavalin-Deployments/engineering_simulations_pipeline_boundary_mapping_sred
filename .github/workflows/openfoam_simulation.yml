@@ -31,4 +31,17 @@ jobs:
       - name: Check Output
         run: ls -l ./testing-input-output/
 
+      # 6️⃣ Commit and Push `boundary_conditions.json` to Repository
+      - name: Commit and Push Boundary Conditions JSON
+        env:
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          git config --global user.name "$GIT_USER_NAME"
+          git config --global user.email "$GIT_USER_EMAIL"
+          git add testing-input-output/boundary_conditions.json
+          git commit -m "Auto-update: Added latest boundary conditions JSON file"
+          git push origin HEAD
+
+
 
