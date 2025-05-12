@@ -48,9 +48,12 @@ jobs:
         run: |
           git config --global user.name "$GIT_USER_NAME"
           git config --global user.email "$GIT_USER_EMAIL"
-          git add testing-input-output/boundary_conditions.json
-          git commit -m "Auto-update: Passed unit tests and updated boundary conditions JSON file"
-          git push origin HEAD
 
-
-
+          # Check if there are changes to commit
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit. Skipping push."
+          else
+            git add testing-input-output/boundary_conditions.json
+            git commit -m "Auto-update: Passed unit tests and updated boundary conditions JSON file"
+            git push origin HEAD
+          fi
