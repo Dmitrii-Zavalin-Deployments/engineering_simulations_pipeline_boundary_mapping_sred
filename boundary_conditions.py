@@ -6,22 +6,23 @@ import numpy as np
 CONFIG_FILE = "testing-input-output/boundary_conditions_config.json"
 
 def load_config(config_file):
-    """Loads inlet and outlet boundary condition values from external JSON, with error handling."""
+    """Loads inlet boundary condition values from external JSON, ensuring outlet data remains undefined."""
     try:
         with open(config_file, "r") as f:
             config = json.load(f)
-            
+
             # Ensure pressure values are non-negative
             config["inlet"]["pressure"] = max(config["inlet"]["pressure"], 0)
-            config["outlet"]["pressure"] = max(config["outlet"]["pressure"], 0)
-            
+
+            # Ensure outlet section exists but remains empty
+            config.setdefault("outlet", {})
+            config["outlet"]["velocity"] = []
+            config["outlet"]["pressure"] = []
+
             return config
     except (FileNotFoundError, json.JSONDecodeError):
-        print(f"⚠️ Configuration file {config_file} not found or invalid. Using default values.")
-        return {
-            "inlet": {"velocity": [1.0, 0.0, 0.0], "pressure": 100000},
-            "outlet": {"velocity": [0.0, 0.0, -1.0], "pressure": 101325}
-        }
+        print(f"⚠️ Configuration file {config_file} not found or invalid. Stopping execution.")
+        sys.exit(1)
 
 def generate_boundary_conditions(mesh_file, output_file="testing-input-output/boundary_conditions.json"):
     """Processes the mesh and creates a structured boundary condition JSON file using improved region detection."""
@@ -35,7 +36,7 @@ def generate_boundary_conditions(mesh_file, output_file="testing-input-output/bo
         print("❌ Error: Mesh file is empty or corrupted.")
         sys.exit(1)
 
-    # Load velocity and pressure values from configuration file
+    # Load inlet boundary condition values
     config = load_config(CONFIG_FILE)
 
     # Initialize Boundary Conditions Structure
@@ -79,6 +80,3 @@ if __name__ == "__main__":
 
     mesh_file = sys.argv[1]
     generate_boundary_conditions(mesh_file)
-
-
-
