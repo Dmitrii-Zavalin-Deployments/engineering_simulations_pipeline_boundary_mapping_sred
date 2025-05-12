@@ -1,30 +1,34 @@
-name: Boundary Condition Generation  # Workflow name
+name: Boundary Condition Generation
 
 on:
-  push:  # ✅ Runs on every commit to any branch
-  workflow_dispatch:  # ✅ Allows manual triggering too
+  push:
+  workflow_dispatch:
 
 jobs:
   generate-boundary-conditions:
     runs-on: ubuntu-latest
     steps:
 
-      # 1️⃣ Step: Checkout the Repository
+      # 1️⃣ Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Step: Verify `.obj` File Exists in `testing-input-output/`
-      - name: Check if `testing-Body.obj` is present
+      # 2️⃣ Install Dependencies (Fix Missing `pyvista`)
+      - name: Install Python Dependencies
         run: |
-          ls -l ./testing-input-output/
+          python -m pip install --upgrade pip
+          pip install pyvista numpy meshio
 
-      # 3️⃣ Step: Run Python Script to Create `boundary_conditions.json`
-      # ✅ Passes `testing-Body.obj` as an argument to `boundary_conditions.py`
-      - name: Generate Boundary Conditions from `testing-Body.obj`
-        run: |
-          python boundary_conditions.py ./testing-input-output/testing-Body.obj
+      # 3️⃣ Verify `.obj` File Exists
+      - name: Check `testing-Body.obj`
+        run: ls -l ./testing-input-output/
 
-      # Debugging: Verify `boundary_conditions.json` File Creation
-      - name: Verify `boundary_conditions.json` File Creation
-        run: |
-          ls -l ./testing-input-output/
+      # 4️⃣ Run Boundary Conditions Script
+      - name: Generate Boundary Conditions
+        run: python boundary_conditions.py ./testing-input-output/testing-Body.obj
+
+      # 5️⃣ Verify `boundary_conditions.json` Creation
+      - name: Check Output
+        run: ls -l ./testing-input-output/
+
+
