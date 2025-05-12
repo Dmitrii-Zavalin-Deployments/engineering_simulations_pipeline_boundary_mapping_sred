@@ -1,3 +1,5 @@
+To do: add initial conditions to boundary conditions calculations
+
 # OpenFOAM CFD Automation
 
 ## Overview
