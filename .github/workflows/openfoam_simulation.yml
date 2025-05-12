@@ -17,22 +17,30 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyvista numpy meshio
+          pip install pyvista numpy meshio jsonschema pytest
 
-      # 3️⃣ Verify `.obj` File Exists
+      # 3️⃣ Run Unit Tests to Validate Setup & Configuration
+      - name: Run Unit Tests First
+        run: python -m unittest test_boundary_conditions.py
+
+      # 4️⃣ Verify `.obj` File Exists (Only If Tests Passed)
       - name: Check `testing-Body.obj`
+        if: success()
         run: ls -l ./testing-input-output/
 
-      # 4️⃣ Run Boundary Conditions Script
+      # 5️⃣ Run Boundary Conditions Script (Only If Tests Passed)
       - name: Generate Boundary Conditions
+        if: success()
         run: python boundary_conditions.py ./testing-input-output/testing-Body.obj
 
-      # 5️⃣ Verify `boundary_conditions.json` Creation
+      # 6️⃣ Verify `boundary_conditions.json` Creation (Only If Tests Passed)
       - name: Check Output
+        if: success()
         run: ls -l ./testing-input-output/
 
-      # 6️⃣ Commit and Push `boundary_conditions.json` to Repository
+      # 7️⃣ Commit and Push `boundary_conditions.json` to Repository (Only If Tests Passed)
       - name: Commit and Push Boundary Conditions JSON
+        if: success()
         env:
           GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
           GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
@@ -40,7 +48,7 @@ jobs:
           git config --global user.name "$GIT_USER_NAME"
           git config --global user.email "$GIT_USER_EMAIL"
           git add testing-input-output/boundary_conditions.json
-          git commit -m "Auto-update: Added latest boundary conditions JSON file"
+          git commit -m "Auto-update: Passed unit tests and updated boundary conditions JSON file"
           git push origin HEAD
 
 
