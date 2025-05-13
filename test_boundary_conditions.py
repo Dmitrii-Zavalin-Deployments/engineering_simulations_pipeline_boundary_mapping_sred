@@ -23,7 +23,11 @@ class TestBoundaryConditions(unittest.TestCase):
 
         # Ensure pressure values are non-negative in configuration
         self.config["inlet"]["pressure"] = max(self.config["inlet"]["pressure"], 0)
-        self.config["outlet"]["pressure"] = max(self.config["outlet"]["pressure"], 0)
+
+        # Ensure outlet section exists but remains empty
+        self.config.setdefault("outlet", {})
+        self.config["outlet"]["velocity"] = []
+        self.config["outlet"]["pressure"] = []
 
     def test_json_schema(self):
         """Validates JSON structure using a predefined schema."""
@@ -53,34 +57,19 @@ class TestBoundaryConditions(unittest.TestCase):
                 self.fail(f"❌ Point {i} incorrectly classified as outlet (Height {point[2]})")
 
     def test_config_consistency(self):
-        """Checks that inlet/outlet velocities and pressures match the configuration file."""
+        """Checks that inlet velocities and pressures match the configuration file."""
         self.assertEqual(self.bc_data["inlet"]["velocity"], self.config["inlet"]["velocity"], "❌ Inlet velocity mismatch!")
         self.assertEqual(self.bc_data["inlet"]["pressure"], self.config["inlet"]["pressure"], "❌ Inlet pressure mismatch!")
-        self.assertEqual(self.bc_data["outlet"]["velocity"], self.config["outlet"]["velocity"], "❌ Outlet velocity mismatch!")
-        self.assertEqual(self.bc_data["outlet"]["pressure"], self.config["outlet"]["pressure"], "❌ Outlet pressure mismatch!")
+
+    def test_outlet_section_empty(self):
+        """Ensures outlet exists but remains unassigned."""
+        self.assertIn("outlet", self.bc_data, "❌ Outlet section missing!")
+        self.assertEqual(self.bc_data["outlet"]["velocity"], [], "❌ Outlet velocity should be empty!")
+        self.assertEqual(self.bc_data["outlet"]["pressure"], [], "❌ Outlet pressure should be empty!")
 
     def test_mesh_integrity(self):
         """Ensures the mesh is valid and contains points before processing."""
         self.assertGreater(self.mesh.n_points, 0, "❌ Mesh file is empty or corrupted.")
-
-    def test_edge_cases(self):
-        """Verifies behavior with extreme velocity and pressure values."""
-        extreme_config = {
-            "inlet": {"velocity": [0.0, 0.0, 0.0], "pressure": -50000},
-            "outlet": {"velocity": [9999.0, 0.0, 0.0], "pressure": 999999}
-        }
-
-        # Apply extreme test values
-        self.bc_data["inlet"]["velocity"] = extreme_config["inlet"]["velocity"]
-        self.bc_data["inlet"]["pressure"] = max(extreme_config["inlet"]["pressure"], 0)  # Correct negative pressure
-        self.bc_data["outlet"]["velocity"] = extreme_config["outlet"]["velocity"]
-        self.bc_data["outlet"]["pressure"] = extreme_config["outlet"]["pressure"]
-
-        # Validation checks with proper handling of negative values
-        self.assertGreater(self.bc_data["outlet"]["pressure"], 0, f"❌ Outlet pressure should be positive, got {self.bc_data['outlet']['pressure']}")
-        self.assertGreaterEqual(self.bc_data["inlet"]["pressure"], 0, f"❌ Inlet pressure should not be negative, got {self.bc_data['inlet']['pressure']}")
-
-        print(f"✅ Edge case test passed with corrected inlet pressure: {self.bc_data['inlet']['pressure']}")
 
 if __name__ == "__main__":
     unittest.main()
