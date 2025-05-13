@@ -64,8 +64,13 @@ class TestBoundaryConditions(unittest.TestCase):
     def test_outlet_section_empty(self):
         """Ensures outlet exists but remains unassigned."""
         self.assertIn("outlet", self.bc_data, "❌ Outlet section missing!")
+
+        # Validate outlet velocity and pressure are empty lists
         self.assertEqual(self.bc_data["outlet"]["velocity"], [], "❌ Outlet velocity should be empty!")
         self.assertEqual(self.bc_data["outlet"]["pressure"], [], "❌ Outlet pressure should be empty!")
+
+        # Ensure outlet exists as a properly formatted dictionary
+        self.assertIsInstance(self.bc_data["outlet"], dict, "❌ Outlet section should be a dictionary!")
 
     def test_mesh_integrity(self):
         """Ensures the mesh is valid and contains points before processing."""
