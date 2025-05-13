@@ -24,22 +24,29 @@ jobs:
         run: |
           python -m unittest test_boundary_conditions.py || { echo "❌ Unit tests failed. Stopping workflow."; exit 1; }
 
-      # 4️⃣ Verify `.obj` File Exists (Only If Tests Passed)
+      # 4️⃣ Validate `boundary_conditions.json` Formatting (Only If Tests Passed)
+      - name: Check JSON Formatting
+        if: success()
+        run: |
+          python -c "import json; f = open('testing-input-output/boundary_conditions.json'); json.load(f); f.close()"
+          echo "✅ JSON formatting is valid."
+
+      # 5️⃣ Verify `.obj` File Exists (Only If Tests Passed)
       - name: Check `testing-Body.obj`
         if: success()
         run: ls -l ./testing-input-output/
 
-      # 5️⃣ Run Boundary Conditions Script (Only If Tests Passed)
+      # 6️⃣ Run Boundary Conditions Script (Only If Tests Passed)
       - name: Generate Boundary Conditions
         if: success()
         run: python boundary_conditions.py ./testing-input-output/testing-Body.obj
 
-      # 6️⃣ Verify `boundary_conditions.json` Creation (Only If Tests Passed)
+      # 7️⃣ Verify `boundary_conditions.json` Creation (Only If Tests Passed)
       - name: Check Output
         if: success()
         run: ls -l ./testing-input-output/
 
-      # 7️⃣ Commit and Push `boundary_conditions.json` to Repository (Only If Tests Passed)
+      # 8️⃣ Commit and Push `boundary_conditions.json` to Repository (Only If Tests Passed)
       - name: Commit and Push Boundary Conditions JSON
         if: success()
         env:
