@@ -1,16 +1,7 @@
 {
     "inlet": {
         "velocity": [1.5, 0.0, 0.0],
-        "pressure": 100000,
-        "region_id": [indices_of_inlet_points]
+        "pressure": 100000
     },
-    "outlet": {
-        "velocity": [],
-        "pressure": [],
-        "region_id": [indices_of_outlet_points]
-    },
-    "walls": {
-        "region_id": [indices_of_wall_points],
-        "no_slip": true
-    }
+    "outlet": {}
 }
