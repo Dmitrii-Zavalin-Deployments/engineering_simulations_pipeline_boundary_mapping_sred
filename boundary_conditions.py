@@ -42,7 +42,7 @@ def generate_boundary_conditions(mesh_file, output_file="testing-input-output/bo
     # Initialize Boundary Conditions Structure
     boundary_conditions = {
         "inlet": {"region_id": [], "velocity": config["inlet"]["velocity"], "pressure": config["inlet"]["pressure"]},
-        "outlet": {"region_id": [], "velocity": config["outlet"]["velocity"], "pressure": config["outlet"]["pressure"]},
+        "outlet": {"region_id": [], "velocity": [], "pressure": []},  # Ensure outlet values remain empty
         "walls": {"region_id": [], "no_slip": True}
     }
 
@@ -80,3 +80,6 @@ if __name__ == "__main__":
 
     mesh_file = sys.argv[1]
     generate_boundary_conditions(mesh_file)
+
+
+
