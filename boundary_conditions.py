@@ -64,7 +64,7 @@ def generate_boundary_conditions(mesh_file, output_file="testing-input-output/bo
         elif normals is not None and np.linalg.norm(normals[i][:2]) > 0.2:  # Walls (Horizontal components detection)
             boundary_conditions["walls"]["region_id"].append(i)
 
-    # ✅ Ensure Outlet Velocity and Pressure Remain Empty Before Saving
+    # ✅ Explicitly reset outlet velocity and pressure to prevent accidental assignments
     boundary_conditions["outlet"]["velocity"] = []
     boundary_conditions["outlet"]["pressure"] = []
 
