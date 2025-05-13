@@ -80,12 +80,8 @@
             1364,
             1376
         ],
-        "velocity": [
-            0.0,
-            0.0,
-            -1.0
-        ],
-        "pressure": 101325
+        "velocity": [],
+        "pressure": []
     },
     "walls": {
         "region_id": [
