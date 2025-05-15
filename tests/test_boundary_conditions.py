@@ -4,13 +4,13 @@ import jsonschema
 import pyvista as pv
 import numpy as np
 
-# ✅ Updated configuration file path
+# ✅ Corrected file paths for testing
 BOUNDARY_CONDITIONS_FILE = "data/testing-input-output/boundary_conditions_config.json"
 CONFIG_FILE = "data/testing-input-output/boundary_conditions_config.json"
 MESH_FILE = "data/testing-input-output/testing-Body.obj"
 
 class TestBoundaryConditions(unittest.TestCase):
-    """Unit tests for boundary_conditions.json validation."""
+    """Unit tests for boundary conditions validation."""
 
     def setUp(self):
         """Load boundary conditions and config before each test."""
