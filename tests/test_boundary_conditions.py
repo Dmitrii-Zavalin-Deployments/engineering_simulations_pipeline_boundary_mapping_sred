@@ -4,9 +4,10 @@ import jsonschema
 import pyvista as pv
 import numpy as np
 
-BOUNDARY_CONDITIONS_FILE = "testing-input-output/boundary_conditions.json"
-CONFIG_FILE = "testing-input-output/boundary_conditions_config.json"
-MESH_FILE = "testing-input-output/testing-Body.obj"
+# ✅ Updated configuration file path
+BOUNDARY_CONDITIONS_FILE = "data/testing-input-output/boundary_conditions_config.json"
+CONFIG_FILE = "data/testing-input-output/boundary_conditions_config.json"
+MESH_FILE = "data/testing-input-output/testing-Body.obj"
 
 class TestBoundaryConditions(unittest.TestCase):
     """Unit tests for boundary_conditions.json validation."""
@@ -78,6 +79,3 @@ class TestBoundaryConditions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
