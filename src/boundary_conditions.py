@@ -3,13 +3,16 @@ import sys
 import pyvista as pv
 import numpy as np
 
-CONFIG_FILE = "testing-input-output/boundary_conditions_config.json"
+CONFIG_FILE = "data/testing-input-output/boundary_conditions_config.json"
 
 def load_config(config_file):
     """Loads inlet boundary condition values from external JSON, ensuring outlet data remains undefined."""
+    print(f"🔍 Trying to load: {config_file}")  # Debugging output
+
     try:
         with open(config_file, "r") as f:
             config = json.load(f)
+            print(f"✅ Loaded Config: {config}")  # Debugging output
 
             # Ensure pressure values are non-negative
             config["inlet"]["pressure"] = max(config["inlet"]["pressure"], 0)
@@ -22,7 +25,7 @@ def load_config(config_file):
         print(f"⚠️ Configuration file {config_file} not found or invalid. Stopping execution.")
         sys.exit(1)
 
-def generate_boundary_conditions(mesh_file, output_file="testing-input-output/boundary_conditions.json"):
+def generate_boundary_conditions(mesh_file, output_file="data/testing-input-output/boundary_conditions.json"):
     """Processes the mesh and creates a structured boundary condition JSON file using improved region detection."""
 
     # Load mesh
@@ -79,6 +82,6 @@ def generate_boundary_conditions(mesh_file, output_file="testing-input-output/bo
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("❌ Usage: python boundary_conditions.py <mesh.obj>")
+        sys.exit("❌ Usage: python src/boundary_conditions.py <mesh.obj>")
 
     generate_boundary_conditions(sys.argv[1])
