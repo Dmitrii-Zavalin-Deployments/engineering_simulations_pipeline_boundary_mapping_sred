@@ -33,10 +33,9 @@ jobs:
           python -c "import json; f = open('data/testing-input-output/boundary_conditions.json'); json.load(f); f.close()"
           echo "✅ JSON formatting is valid."
 
-      # ✅ 6️⃣ Run Unit & Integration Tests on Generated JSON from `tests/`
+      # ✅ 6️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
       - name: Run Unit & Integration Tests
-        run: |
-          python -m unittest tests/test_boundary_conditions.py || { echo "❌ Tests failed. Stopping workflow."; exit 1; }
+        run: python -m unittest tests/test_boundary_conditions.py
 
       # ✅ 7️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
       - name: Commit and Push Boundary Conditions JSON
@@ -56,6 +55,3 @@ jobs:
             git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
             git push origin HEAD
           fi
-
-
-
