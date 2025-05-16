@@ -20,12 +20,12 @@ jobs:
           pip install -r requirements.txt
 
       # ✅ 3️⃣ Verify `.obj` File Exists in `data/`
-      - name: Check `testing-Body.obj`
+      - name: Check `simulation_mesh.obj`
         run: ls -l ./data/testing-input-output/
 
       # ✅ 4️⃣ Run Boundary Conditions Script FIRST from `src/`
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py ./data/testing-input-output/testing-Body.obj
+        run: python src/boundary_conditions.py ./data/testing-input-output/simulation_mesh.obj
 
       # ✅ 5️⃣ Validate `boundary_conditions.json` Formatting
       - name: Check JSON Formatting
@@ -34,8 +34,11 @@ jobs:
           echo "✅ JSON formatting is valid."
 
       # ✅ 6️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
-      - name: Run Unit & Integration Tests
-        run: python -m unittest tests/test_boundary_conditions.py
+      - name: Run unit tests  
+        run: pytest tests/test_unit_validation.py --verbose  
+
+      - name: Run integration tests  
+        run: pytest tests/test_integration_validation.py --verbose
 
       # ✅ 7️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
       - name: Commit and Push Boundary Conditions JSON
@@ -55,3 +58,6 @@ jobs:
             git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
             git push origin HEAD
           fi
+
+
+
