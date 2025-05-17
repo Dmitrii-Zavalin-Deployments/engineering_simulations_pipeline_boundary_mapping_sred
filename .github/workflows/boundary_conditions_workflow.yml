@@ -23,6 +23,16 @@ jobs:
       - name: Check `simulation_mesh.obj`
         run: ls -l ./data/testing-input-output/
 
+      # ✅ 3.5️⃣ Delete Previous `boundary_conditions.json` If Exists
+      - name: Delete Previous Boundary Conditions JSON
+        run: |
+          if [ -f data/testing-input-output/boundary_conditions.json ]; then
+            rm data/testing-input-output/boundary_conditions.json
+            echo "🗑️ Deleted previous boundary_conditions.json file."
+          else
+            echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
+          fi
+
       # ✅ 4️⃣ Run Boundary Conditions Script FIRST from `src/`
       - name: Generate Boundary Conditions
         run: python src/boundary_conditions.py ./data/testing-input-output/simulation_mesh.obj
@@ -58,6 +68,3 @@ jobs:
             git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
             git push origin HEAD
           fi
-
-
-
