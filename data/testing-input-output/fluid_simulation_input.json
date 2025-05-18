@@ -1,8 +1,8 @@
 {
-  "fluid_velocity": 2.5,       // (m/s) - Measured with anemometers or pitot tubes.
-  "velocity_direction": 45,    // (degrees) - Measured using multi-axis flow sensors.
-  "static_pressure": 101325,   // (Pa) - Measured using pressure sensors.
-  "temperature": 298,          // (K) - Measured using thermocouples.
-  "density": 1000,             // (kg/m³) - Derived from temperature or measured using densitometers.
-  "viscosity": 0.001002        // (Pa·s) - Derived from temperature or measured using viscometers.
+  "fluid_velocity": 2.5,
+  "velocity_direction": 45,
+  "static_pressure": 101325,
+  "temperature": 298,
+  "density": 1000,
+  "viscosity": 0.001002
 }
