@@ -31,18 +31,26 @@ def load_input_file(file_path):
 
 # Validate input data for missing fields
 def process_input(input_data):
-    """Validates required fields and checks for missing values."""
+    """Validates required fields and ensures defaults where necessary."""
     required_fields = ["fluid_velocity", "density", "viscosity", "pressure"]
     missing_fields = [field for field in required_fields if field not in input_data]
 
-    if missing_fields:
-        raise KeyError(f"❌ ERROR: Missing required fields: {', '.join(missing_fields)}")
-    
+    # Set default values if missing, or raise an error
+    default_values = {"pressure": 101325}  # Standard atmospheric pressure
+    for field in missing_fields:
+        if field in default_values:
+            input_data[field] = default_values[field]
+        else:
+            raise KeyError(f"❌ ERROR: Missing required field: {field}")
+
     return input_data
 
 # Apply boundary conditions based on input data
 def apply_boundary_conditions(input_data):
     """Assigns inlet, outlet, and wall boundary conditions."""
+    if "pressure" not in input_data:
+        raise KeyError("❌ ERROR: Missing 'pressure' field in input data.")
+
     boundary_conditions = {
         "inlet_boundary": {"velocity": input_data["fluid_velocity"]},
         "outlet_boundary": {"pressure": input_data["pressure"]},
