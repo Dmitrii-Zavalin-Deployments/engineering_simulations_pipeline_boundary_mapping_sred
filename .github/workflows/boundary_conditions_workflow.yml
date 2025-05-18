@@ -35,13 +35,22 @@ jobs:
 
       # ✅ 4️⃣ Run Boundary Conditions Script FIRST from `src/`
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py ./data/testing-input-output/simulation_mesh.obj
+        run: python src/boundary_conditions.py
+
+      # ✅ 4.5️⃣ Debug Generated Files (Verify Output File Exists)
+      - name: Debug Generated Files
+        run: ls -l data/testing-input-output/
 
       # ✅ 5️⃣ Validate `boundary_conditions.json` Formatting
       - name: Check JSON Formatting
         run: |
-          python -c "import json; f = open('data/testing-input-output/boundary_conditions.json'); json.load(f); f.close()"
-          echo "✅ JSON formatting is valid."
+          if [ -f data/testing-input-output/boundary_conditions.json ]; then
+            python -c "import json; f = open('data/testing-input-output/boundary_conditions.json'); json.load(f); f.close()"
+            echo "✅ JSON formatting is valid."
+          else
+            echo "❌ ERROR: boundary_conditions.json was not generated!"
+            exit 1
+          fi
 
       # ✅ 6️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
       - name: Run unit tests  
@@ -60,7 +69,13 @@ jobs:
           git config --global user.name "$GIT_USER_NAME"
           git config --global user.email "$GIT_USER_EMAIL"
 
-          # Check if there are changes to commit
+          # Verify file exists before adding
+          if [ ! -f data/testing-input-output/boundary_conditions.json ]; then
+            echo "❌ ERROR: boundary_conditions.json is missing. Skipping commit."
+            exit 1
+          fi
+
+          # Check if there are actual changes
           if git diff --quiet && git diff --staged --quiet; then
             echo "ℹ️ No changes to commit. Skipping push."
           else
