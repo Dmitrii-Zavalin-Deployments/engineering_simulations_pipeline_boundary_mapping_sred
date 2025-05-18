@@ -26,6 +26,15 @@ def load_input_file(file_path):
 
     return input_data
 
+# Validate input data for missing fields
+def process_input(input_data):
+    """Validates required fields and checks for missing values."""
+    required_fields = ["fluid_velocity", "density", "viscosity", "pressure"]
+    for field in required_fields:
+        if field not in input_data:
+            raise KeyError(f"❌ ERROR: Missing required field: {field}")
+    return input_data
+
 # Apply boundary conditions based on input data
 def apply_boundary_conditions(input_data):
     """Assigns inlet, outlet, and wall boundary conditions."""
@@ -54,11 +63,14 @@ def save_output_file(boundary_conditions, output_file_path):
 
     print(f"✅ Boundary conditions saved to: {output_file_path}")
 
-# Main function: Load input, process boundary conditions, enforce stability, and save output
+# Main function: Load input, validate, process boundary conditions, enforce stability, and save output
 def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
     print("🔄 Loading input data...")
     input_data = load_input_file(input_file_path)
+
+    print("🔄 Validating input fields...")
+    input_data = process_input(input_data)
 
     print("🔄 Enforcing numerical stability...")
     enforce_numerical_stability(input_data, dx, dt)
