@@ -54,7 +54,7 @@ jobs:
 
       # ✅ 6️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
       - name: Run unit tests  
-        run: pytest tests/test_boundary_conditions.py --verbose  
+        run: pytest tests/test_unit_validation.py --verbose  
 
       - name: Run integration tests  
         run: pytest tests/test_integration_validation.py --verbose
