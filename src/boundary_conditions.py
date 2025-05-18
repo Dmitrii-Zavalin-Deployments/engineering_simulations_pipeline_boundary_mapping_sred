@@ -50,12 +50,17 @@ def apply_boundary_conditions(input_data):
     }
     return boundary_conditions
 
-# Numerical stability enforcement via CFL condition
+# Ensure numerical stability via CFL condition
 def enforce_numerical_stability(input_data, dx, dt):
     """Checks CFL condition for numerical stability."""
     cfl_value = input_data["fluid_velocity"] * dt / dx
     if cfl_value > 1:
         raise ValueError("❌ ERROR: CFL condition violated – time-step too large!")
+
+# Generate boundary conditions from input data
+def generate_boundary_conditions(input_data):
+    """Applies boundary conditions based on input properties."""
+    return apply_boundary_conditions(input_data)
 
 # Generate output file based on computed boundary conditions
 def save_output_file(boundary_conditions, output_file_path):
@@ -80,8 +85,8 @@ def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ure
     print("🔄 Enforcing numerical stability...")
     enforce_numerical_stability(input_data, dx, dt)
 
-    print("🔄 Processing boundary conditions...")
-    boundary_conditions = apply_boundary_conditions(input_data)
+    print("🔄 Generating boundary conditions...")
+    boundary_conditions = generate_boundary_conditions(input_data)
 
     print("🔄 Saving results...")
     save_output_file(boundary_conditions, output_file_path)
