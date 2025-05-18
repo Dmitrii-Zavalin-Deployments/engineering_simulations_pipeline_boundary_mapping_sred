@@ -1,3 +1,4 @@
+import os
 import json
 from pint import UnitRegistry
 
@@ -7,12 +8,15 @@ ureg = UnitRegistry()
 # Load input file containing fluid properties
 def load_input_file(file_path):
     """Reads input JSON file with fluid properties and mesh configuration."""
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Error: The input file '{file_path}' was not found.")
+    
     with open(file_path, 'r') as file:
         input_data = json.load(file)
 
     # Convert units correctly
     input_data["fluid_velocity"] *= ureg.meter / ureg.second
-    input_data["pressure"] *= ureg.pascal
+    input_data["pressure"] *= ureg.pascal  # Ensure correct mapping if using 'static_pressure'
     input_data["density"] *= ureg.kilogram / ureg.meter**3
     input_data["viscosity"] *= ureg.pascal * ureg.second
     return input_data
@@ -60,8 +64,8 @@ def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ure
 
 # Example usage: Processing input file and generating output
 if __name__ == "__main__":
-    input_file_path = "fluid_simulation_input.json"
-    output_file_path = "fluid_simulation_output.json"
+    input_file_path = "data/testing-input-output/fluid_simulation_input.json"
+    output_file_path = "data/testing-input-output/fluid_simulation_output.json"
     main(input_file_path, output_file_path)
 
 
