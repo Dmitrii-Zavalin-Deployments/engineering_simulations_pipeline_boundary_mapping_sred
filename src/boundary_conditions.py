@@ -14,9 +14,13 @@ def load_input_file(file_path):
     with open(file_path, 'r') as file:
         input_data = json.load(file)
 
+    # Ensure correct mapping for pressure
+    if "static_pressure" in input_data:
+        input_data["pressure"] = input_data["static_pressure"]
+
     # Convert units correctly
     input_data["fluid_velocity"] *= ureg.meter / ureg.second
-    input_data["pressure"] *= ureg.pascal  # Ensure correct mapping if using 'static_pressure'
+    input_data["pressure"] *= ureg.pascal
     input_data["density"] *= ureg.kilogram / ureg.meter**3
     input_data["viscosity"] *= ureg.pascal * ureg.second
     return input_data
@@ -67,6 +71,3 @@ if __name__ == "__main__":
     input_file_path = "data/testing-input-output/fluid_simulation_input.json"
     output_file_path = "data/testing-input-output/fluid_simulation_output.json"
     main(input_file_path, output_file_path)
-
-
-
