@@ -69,5 +69,5 @@ def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ure
 # Example usage: Processing input file and generating output
 if __name__ == "__main__":
     input_file_path = "data/testing-input-output/fluid_simulation_input.json"
-    output_file_path = "data/testing-input-output/fluid_simulation_output.json"
+    output_file_path = "data/testing-input-output/boundary_conditions.json"  # Updated output filename
     main(input_file_path, output_file_path)
