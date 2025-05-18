@@ -33,9 +33,9 @@ jobs:
             echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
           fi
 
-      # ✅ 4️⃣ Run Boundary Conditions Script FIRST from `src/`
+      # ✅ 4️⃣ Run Boundary Conditions Script with `simulation_mesh.obj`
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py
+        run: python src/boundary_conditions.py ./data/testing-input-output/simulation_mesh.obj
 
       # ✅ 4.5️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
