@@ -2,6 +2,7 @@ import json
 import numpy as np
 import unittest
 from pint import UnitRegistry
+from src.boundary_conditions import process_input  # ✅ Ensure process_input is imported correctly
 
 ureg = UnitRegistry()
 
@@ -35,7 +36,7 @@ class TestInputValidation(unittest.TestCase):
         """Ensure missing input fields trigger appropriate error handling."""
         invalid_input = {"fluid_velocity": 2.5, "temperature": 298}  # Missing density, viscosity
         with self.assertRaises(KeyError):
-            process_input(invalid_input)
+            process_input(invalid_input)  # ✅ Calls imported process_input function
 
 class TestOutputValidation(unittest.TestCase):
     def setUp(self):
@@ -62,6 +63,3 @@ class TestOutputValidation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
