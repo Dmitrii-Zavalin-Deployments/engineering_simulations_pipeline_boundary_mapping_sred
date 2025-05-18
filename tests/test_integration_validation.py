@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 import unittest.mock as mock
-from src.boundary_conditions import apply_boundary_conditions  # ✅ Ensure correct import
-from src.boundary_conditions import generate_boundary_conditions  # ✅ Fix missing function reference
+from src.boundary_conditions import apply_boundary_conditions, generate_boundary_conditions
 
 class TestBoundaryConditionIntegration(unittest.TestCase):
     def setUp(self):
@@ -29,7 +28,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         mock_engine.solve.side_effect = self.mock_solver
 
         boundary_conditions = mock_engine.solve(self.input_data)
-        assert boundary_conditions["pressure"] == 100500, "Mock solver did not return expected pressure!"
+        self.assertEqual(boundary_conditions["pressure"], 100500, "Mock solver did not return expected pressure!")
 
     def test_cfl_condition_across_domain(self):
         """Validate CFL constraints hold across the computational domain"""
@@ -39,15 +38,18 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         dx = 0.01  # Grid spacing
         dt = 0.001  # Suggested time step
         cfl_values = velocity_field * dt / dx
-        assert np.all(cfl_values <= 1), "❌ CFL condition violated in some regions!"
+        self.assertTrue(np.all(cfl_values <= 1), "❌ CFL condition violated in some regions!")
 
     def test_extreme_fluid_conditions(self):
         """Ensure solver correctly handles extreme velocity inputs."""
         extreme_input = {"fluid_velocity": 50, "density": 1000, "viscosity": 0.001002}
         
         try:
-            boundary_conditions = generate_boundary_conditions(extreme_input)  # ✅ Fix missing function reference
-            assert boundary_conditions["outlet_boundary"]["velocity"][0] <= 50, "❌ Extreme velocity case not handled properly!"
+            boundary_conditions = generate_boundary_conditions(extreme_input)
+            self.assertLessEqual(
+                boundary_conditions["outlet_boundary"]["velocity"][0], 50,
+                "❌ Extreme velocity case not handled properly!"
+            )
         except NameError:
             self.fail("❌ generate_boundary_conditions function is missing or incorrectly imported!")
 
@@ -58,7 +60,10 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         mock_engine.solve.side_effect = lambda x: {"pressure": 101300, "velocity": [5.5, 0.0, 0.0]}
 
         output_conditions = mock_engine.solve(input_data)
-        assert output_conditions["pressure"] == 101300, "❌ Outlet conditions did not update dynamically!"
+        self.assertEqual(
+            output_conditions["pressure"], 101300,
+            "❌ Outlet conditions did not update dynamically!"
+        )
 
 if __name__ == "__main__":
     unittest.main()
