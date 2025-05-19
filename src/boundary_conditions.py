@@ -53,7 +53,10 @@ def apply_boundary_conditions(input_data):
 
     boundary_conditions = {
         "inlet_boundary": {"velocity": input_data["fluid_velocity"]},
-        "outlet_boundary": {"pressure": input_data["pressure"]},
+        "outlet_boundary": {
+            "pressure": input_data["pressure"],
+            "velocity": input_data.get("fluid_velocity", [0.0, 0.0, 0.0])  # Ensure velocity is included
+        },
         "walls": {"velocity": 0 * ureg.meter / ureg.second},  # No-slip condition
     }
     return boundary_conditions
