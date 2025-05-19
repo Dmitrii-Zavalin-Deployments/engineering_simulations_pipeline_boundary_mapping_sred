@@ -65,7 +65,8 @@ def apply_boundary_conditions(input_data):
 # Ensure numerical stability via CFL condition
 def enforce_numerical_stability(input_data, dx, dt):
     """Checks CFL condition for numerical stability."""
-    cfl_value = max(np.linalg.norm(np.array(input_data["fluid_velocity"], dtype=float))) * dt / dx
+    velocity_norm = np.linalg.norm(np.array(input_data["fluid_velocity"], dtype=float), axis=-1)  # Ensure it's an array
+    cfl_value = np.max(velocity_norm) * dt / dx  # Use np.max() on an array, not a scalar
     if cfl_value > 1:
         raise ValueError("❌ ERROR: CFL condition violated – time-step too large!")
 
