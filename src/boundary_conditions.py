@@ -1,5 +1,6 @@
 import os
 import json
+import numpy as np
 from pint import UnitRegistry
 
 # Initialize unit registry for physical properties
@@ -22,7 +23,7 @@ def load_input_file(file_path):
     input_data = process_input(input_data)
 
     # Convert units correctly
-    input_data["fluid_velocity"] *= ureg.meter / ureg.second
+    input_data["fluid_velocity"] = list(np.atleast_1d(input_data["fluid_velocity"])) * ureg.meter / ureg.second
     input_data["pressure"] *= ureg.pascal
     input_data["density"] *= ureg.kilogram / ureg.meter**3
     input_data["viscosity"] *= ureg.pascal * ureg.second
@@ -55,16 +56,16 @@ def apply_boundary_conditions(input_data):
         "inlet_boundary": {"velocity": input_data["fluid_velocity"]},
         "outlet_boundary": {
             "pressure": input_data["pressure"],
-            "velocity": input_data.get("fluid_velocity", [0.0, 0.0, 0.0])  # Ensure velocity is included
+            "velocity": list(np.atleast_1d(input_data["fluid_velocity"]))  # Ensure velocity is always a list
         },
-        "walls": {"velocity": 0 * ureg.meter / ureg.second},  # No-slip condition
+        "walls": {"velocity": list(np.atleast_1d(0 * ureg.meter / ureg.second))},  # No-slip condition
     }
     return boundary_conditions
 
 # Ensure numerical stability via CFL condition
 def enforce_numerical_stability(input_data, dx, dt):
     """Checks CFL condition for numerical stability."""
-    cfl_value = input_data["fluid_velocity"] * dt / dx
+    cfl_value = max(np.linalg.norm(np.array(input_data["fluid_velocity"], dtype=float))) * dt / dx
     if cfl_value > 1:
         raise ValueError("❌ ERROR: CFL condition violated – time-step too large!")
 
@@ -78,7 +79,7 @@ def save_output_file(boundary_conditions, output_file_path):
     """Writes computed boundary conditions to output JSON file."""
     # Convert Pint quantities to numerical values for JSON compatibility
     formatted_output = {
-        key: {sub_key: float(value.magnitude) for sub_key, value in val.items()}
+        key: {sub_key: float(value.magnitude) if hasattr(value, 'magnitude') else value for sub_key, value in val.items()}
         for key, val in boundary_conditions.items()
     }
 
