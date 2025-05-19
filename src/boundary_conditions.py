@@ -23,7 +23,7 @@ def load_input_file(file_path):
     input_data = process_input(input_data)
 
     # Convert units correctly
-    input_data["fluid_velocity"] = np.array(input_data["fluid_velocity"], dtype=float) * ureg.meter / ureg.second
+    input_data["fluid_velocity"] = np.atleast_1d(np.array(input_data["fluid_velocity"], dtype=float)) * ureg.meter / ureg.second
     input_data["pressure"] *= ureg.pascal
     input_data["density"] *= ureg.kilogram / ureg.meter**3
     input_data["viscosity"] *= ureg.pascal * ureg.second
@@ -34,7 +34,7 @@ def load_input_file(file_path):
 def process_input(input_data):
     """Validates required fields and ensures defaults where necessary."""
     required_fields = ["fluid_velocity", "density", "viscosity", "pressure"]
-    default_values = {"pressure": 101325 * ureg.pascal, "fluid_velocity": [0.0, 0.0, 0.0] * ureg.meter / ureg.second}
+    default_values = {"pressure": 101325 * ureg.pascal, "fluid_velocity": np.array([0.0, 0.0, 0.0]) * ureg.meter / ureg.second}
 
     for field in required_fields:
         if field not in input_data:
@@ -61,7 +61,9 @@ def apply_boundary_conditions(input_data):
 # Ensure numerical stability via CFL condition
 def enforce_numerical_stability(input_data, dx, dt):
     """Checks CFL condition for numerical stability."""
-    velocity_norm = np.linalg.norm(np.array(input_data["fluid_velocity"].magnitude, dtype=float), axis=-1)  # Convert to float before computation
+    fluid_velocity_array = np.atleast_1d(np.array(input_data["fluid_velocity"].magnitude, dtype=float))  # Ensure array format
+    velocity_norm = np.linalg.norm(fluid_velocity_array, axis=-1)  # Compute norm safely
+
     cfl_value = np.max(velocity_norm) * dt.magnitude / dx.magnitude  # Extract magnitude values for CFL enforcement
 
     if cfl_value > 1:  # Ensure proper numerical comparison
