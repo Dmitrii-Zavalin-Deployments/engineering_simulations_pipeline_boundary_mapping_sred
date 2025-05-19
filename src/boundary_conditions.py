@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from pint import UnitRegistry
-from download_dropbox_files import download_files_from_dropbox
+from src.download_dropbox_files import download_files_from_dropbox  # Corrected import path
 
 # Initialize unit registry for physical properties
 ureg = UnitRegistry()
@@ -21,13 +21,17 @@ client_secret = os.getenv("DROPBOX_CLIENT_SECRET")
 def fetch_simulation_files():
     """Fetch simulation input files from Dropbox."""
     files_to_download = ["fluid_simulation_input.json", "simulation_mesh.obj"]
-    
+
+    if not refresh_token or not client_id or not client_secret:
+        raise ValueError("❌ ERROR: Missing Dropbox API credentials! Ensure environment variables are set.")
+
     print("🔄 Downloading input files from Dropbox...")
-    download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path, files_to_download)
+    download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path)
 
     # Verify files are downloaded
     for file in files_to_download:
-        if not os.path.exists(os.path.join(local_folder, file)):
+        file_path = os.path.join(local_folder, file)
+        if not os.path.exists(file_path):
             raise FileNotFoundError(f"❌ ERROR: Missing required file '{file}' after Dropbox download.")
 
 # Load input file containing fluid properties
