@@ -11,7 +11,7 @@ jobs:
 
       # ✅ 1️⃣ Checkout Repository
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # ✅ 2️⃣ Set up Python
       - name: Set up Python
@@ -27,7 +27,7 @@ jobs:
 
       # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script
       - name: Make `download_from_dropbox.sh` Executable
-        run: chmod +x ./download_from_dropbox.sh
+        run: chmod +x src/download_from_dropbox.sh
 
       # ✅ 5️⃣ Run Dropbox Shell Script to Fetch Files
       - name: Download Simulation Files from Dropbox
@@ -35,11 +35,11 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-        run: ./download_from_dropbox.sh
+        run: src/download_from_dropbox.sh
 
       # ✅ 6️⃣ Verify `.obj` File Exists in `downloaded_simulation_files/`
       - name: Check `simulation_mesh.obj`
-        run: ls -l ./downloaded_simulation_files/
+        run: ls -l downloaded_simulation_files/
 
       # ✅ 7️⃣ Delete Previous `boundary_conditions.json` If Exists
       - name: Delete Previous Boundary Conditions JSON
@@ -71,33 +71,33 @@ jobs:
           fi
 
       # ✅ 1️⃣1️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
-      - name: Run unit tests  
-        run: pytest tests/test_unit_validation.py --verbose  
+      - name: Run unit tests
+        run: pytest tests/test_unit_validation.py --verbose
 
-      - name: Run integration tests  
+      - name: Run integration tests
         run: pytest tests/test_integration_validation.py --verbose
 
       # ✅ 1️⃣2️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
-      # - name: Commit and Push Boundary Conditions JSON
-      #   if: success()
-      #   env:
-      #     GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-      #     GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-      #   run: |
-      #     git config --global user.name "$GIT_USER_NAME"
-      #     git config --global user.email "$GIT_USER_EMAIL"
+      - name: Commit and Push Boundary Conditions JSON
+        if: success()
+        env:
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          git config --global user.name "$GIT_USER_NAME"
+          git config --global user.email "$GIT_USER_EMAIL"
 
-      #     # Verify file exists before adding
-      #     if [ ! -f downloaded_simulation_files/boundary_conditions.json ]; then
-      #       echo "❌ ERROR: boundary_conditions.json is missing. Skipping commit."
-      #       exit 1
-      #     fi
+          # Verify file exists before adding
+          if [ ! -f downloaded_simulation_files/boundary_conditions.json ]; then
+            echo "❌ ERROR: boundary_conditions.json is missing. Skipping commit."
+            exit 1
+          fi
 
-      #     # Check if there are actual changes
-      #     if git diff --quiet && git diff --staged --quiet; then
-      #       echo "ℹ️ No changes to commit. Skipping push."
-      #     else
-      #       git add downloaded_simulation_files/boundary_conditions.json
-      #       git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
-      #       git push origin HEAD
-      #     fi
+          # Check if there are actual changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit. Skipping push."
+          else
+            git add downloaded_simulation_files/boundary_conditions.json
+            git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
+            git push origin HEAD
+          fi
