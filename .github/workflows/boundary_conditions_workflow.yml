@@ -13,57 +13,71 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # ✅ 2️⃣ Install Dependencies
+      # ✅ 2️⃣ Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      # ✅ 3️⃣ Install Dependencies
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ✅ 3️⃣ Download Required Files from Dropbox
+      # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script
+      - name: Make `download_from_dropbox.sh` Executable
+        run: chmod +x ./download_from_dropbox.sh
+
+      # ✅ 5️⃣ Run Dropbox Shell Script to Fetch Files
       - name: Download Simulation Files from Dropbox
-        run: python src/download_dropbox_files.py
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: ./download_from_dropbox.sh
 
-      # ✅ 3.5️⃣ Verify `.obj` File Exists in `data/`
+      # ✅ 6️⃣ Verify `.obj` File Exists in `downloaded_simulation_files/`
       - name: Check `simulation_mesh.obj`
-        run: ls -l ./data/testing-input-output/
+        run: ls -l ./downloaded_simulation_files/
 
-      # ✅ 4️⃣ Delete Previous `boundary_conditions.json` If Exists
+      # ✅ 7️⃣ Delete Previous `boundary_conditions.json` If Exists
       - name: Delete Previous Boundary Conditions JSON
         run: |
-          if [ -f data/testing-input-output/boundary_conditions.json ]; then
-            rm data/testing-input-output/boundary_conditions.json
+          if [ -f downloaded_simulation_files/boundary_conditions.json ]; then
+            rm downloaded_simulation_files/boundary_conditions.json
             echo "🗑️ Deleted previous boundary_conditions.json file."
           else
             echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
           fi
 
-      # ✅ 5️⃣ Run Boundary Conditions Script with `simulation_mesh.obj`
+      # ✅ 8️⃣ Run Boundary Conditions Script with `simulation_mesh.obj`
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py ./data/testing-input-output/simulation_mesh.obj
+        run: python src/boundary_conditions.py ./downloaded_simulation_files/simulation_mesh.obj
 
-      # ✅ 6️⃣ Debug Generated Files (Verify Output File Exists)
+      # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
-        run: ls -l data/testing-input-output/
+        run: ls -l downloaded_simulation_files/
 
-      # ✅ 7️⃣ Validate `boundary_conditions.json` Formatting
+      # ✅ 1️⃣0️⃣ Validate `boundary_conditions.json` Formatting
       - name: Check JSON Formatting
         run: |
-          if [ -f data/testing-input-output/boundary_conditions.json ]; then
-            python -c "import json; f = open('data/testing-input-output/boundary_conditions.json'); json.load(f); f.close()"
+          if [ -f downloaded_simulation_files/boundary_conditions.json ]; then
+            python -c "import json; f = open('downloaded_simulation_files/boundary_conditions.json'); json.load(f); f.close()"
             echo "✅ JSON formatting is valid."
           else
             echo "❌ ERROR: boundary_conditions.json was not generated!"
             exit 1
           fi
 
-      # ✅ 8️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
+      # ✅ 1️⃣1️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
       - name: Run unit tests  
         run: pytest tests/test_unit_validation.py --verbose  
 
       - name: Run integration tests  
         run: pytest tests/test_integration_validation.py --verbose
 
-      # ✅ 9️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
+      # ✅ 1️⃣2️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
       # - name: Commit and Push Boundary Conditions JSON
       #   if: success()
       #   env:
@@ -74,7 +88,7 @@ jobs:
       #     git config --global user.email "$GIT_USER_EMAIL"
 
       #     # Verify file exists before adding
-      #     if [ ! -f data/testing-input-output/boundary_conditions.json ]; then
+      #     if [ ! -f downloaded_simulation_files/boundary_conditions.json ]; then
       #       echo "❌ ERROR: boundary_conditions.json is missing. Skipping commit."
       #       exit 1
       #     fi
@@ -83,7 +97,7 @@ jobs:
       #     if git diff --quiet && git diff --staged --quiet; then
       #       echo "ℹ️ No changes to commit. Skipping push."
       #     else
-      #       git add data/testing-input-output/boundary_conditions.json
+      #       git add downloaded_simulation_files/boundary_conditions.json
       #       git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
       #       git push origin HEAD
       #     fi
