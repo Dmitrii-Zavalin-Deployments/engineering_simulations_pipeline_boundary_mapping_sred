@@ -23,7 +23,7 @@ def load_input_file(file_path):
     input_data = process_input(input_data)
 
     # Convert units correctly
-    input_data["fluid_velocity"] = list(np.atleast_1d(input_data["fluid_velocity"])) * ureg.meter / ureg.second
+    input_data["fluid_velocity"] = np.array(input_data["fluid_velocity"], dtype=float) * ureg.meter / ureg.second
     input_data["pressure"] *= ureg.pascal
     input_data["density"] *= ureg.kilogram / ureg.meter**3
     input_data["viscosity"] *= ureg.pascal * ureg.second
@@ -34,15 +34,11 @@ def load_input_file(file_path):
 def process_input(input_data):
     """Validates required fields and ensures defaults where necessary."""
     required_fields = ["fluid_velocity", "density", "viscosity", "pressure"]
-    missing_fields = [field for field in required_fields if field not in input_data]
+    default_values = {"pressure": 101325 * ureg.pascal, "fluid_velocity": [0.0, 0.0, 0.0] * ureg.meter / ureg.second}
 
-    # Set default values if missing, or raise an error
-    default_values = {"pressure": 101325}  # Standard atmospheric pressure
-    for field in missing_fields:
-        if field in default_values:
+    for field in required_fields:
+        if field not in input_data:
             input_data[field] = default_values[field]
-        else:
-            raise KeyError(f"❌ ERROR: Missing required field: {field}")
 
     return input_data
 
@@ -56,19 +52,20 @@ def apply_boundary_conditions(input_data):
         "inlet_boundary": {"velocity": input_data["fluid_velocity"]},
         "outlet_boundary": {
             "pressure": input_data["pressure"],
-            "velocity": list(np.atleast_1d(input_data["fluid_velocity"]))  # Ensure velocity is always a list
+            "velocity": np.atleast_1d(input_data["fluid_velocity"])  # Ensure velocity remains an array
         },
-        "walls": {"velocity": list(np.atleast_1d(0 * ureg.meter / ureg.second))},  # No-slip condition
+        "walls": {"velocity": np.atleast_1d(0 * ureg.meter / ureg.second)},  # No-slip condition
     }
     return boundary_conditions
 
 # Ensure numerical stability via CFL condition
 def enforce_numerical_stability(input_data, dx, dt):
     """Checks CFL condition for numerical stability."""
-    velocity_norm = np.linalg.norm(np.array(input_data["fluid_velocity"], dtype=float), axis=-1)  # Ensure it's an array
-    cfl_value = np.max(velocity_norm) * dt / dx  # Use np.max() on an array, not a scalar
-    if cfl_value > 1:
-        raise ValueError("❌ ERROR: CFL condition violated – time-step too large!")
+    velocity_norm = np.linalg.norm(np.array(input_data["fluid_velocity"].magnitude, dtype=float), axis=-1)  # Convert to float before computation
+    cfl_value = np.max(velocity_norm) * dt.magnitude / dx.magnitude  # Extract magnitude values for CFL enforcement
+
+    if cfl_value > 1:  # Ensure proper numerical comparison
+        raise ValueError(f"❌ ERROR: CFL condition violated – CFL = {cfl_value:.4f}. Adjust time-step or grid spacing.")
 
 # Generate boundary conditions from input data
 def generate_boundary_conditions(input_data):
