@@ -2,9 +2,33 @@ import os
 import json
 import numpy as np
 from pint import UnitRegistry
+from download_dropbox_files import download_files_from_dropbox
 
 # Initialize unit registry for physical properties
 ureg = UnitRegistry()
+
+# Define Dropbox parameters
+dropbox_folder = "/engineering_simulations_pipeline"
+local_folder = "data/testing-input-output"
+log_file_path = "data/dropbox_download_log.txt"
+
+# Define Dropbox API credentials (ensure these are securely stored in environment variables)
+refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+client_id = os.getenv("DROPBOX_CLIENT_ID")
+client_secret = os.getenv("DROPBOX_CLIENT_SECRET")
+
+# Download required input files from Dropbox
+def fetch_simulation_files():
+    """Fetch simulation input files from Dropbox."""
+    files_to_download = ["fluid_simulation_input.json", "simulation_mesh.obj"]
+    
+    print("🔄 Downloading input files from Dropbox...")
+    download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path, files_to_download)
+
+    # Verify files are downloaded
+    for file in files_to_download:
+        if not os.path.exists(os.path.join(local_folder, file)):
+            raise FileNotFoundError(f"❌ ERROR: Missing required file '{file}' after Dropbox download.")
 
 # Load input file containing fluid properties
 def load_input_file(file_path):
@@ -77,6 +101,11 @@ def generate_boundary_conditions(input_data):
 # Generate output file based on computed boundary conditions
 def save_output_file(boundary_conditions, output_file_path):
     """Writes computed boundary conditions to output JSON file."""
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)  # Create directory if missing
+
     # Convert Pint quantities to numerical values for JSON compatibility
     formatted_output = {
         key: {sub_key: float(value.magnitude) if hasattr(value, 'magnitude') else value for sub_key, value in val.items()}
@@ -91,6 +120,10 @@ def save_output_file(boundary_conditions, output_file_path):
 # Main function: Load input, validate, process boundary conditions, enforce stability, and save output
 def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
+    
+    print("🔄 Downloading required files from Dropbox...")
+    fetch_simulation_files()  # Ensure simulation files are downloaded before proceeding
+
     print("🔄 Loading input data...")
     input_data = load_input_file(input_file_path)
 
@@ -110,3 +143,6 @@ if __name__ == "__main__":
     input_file_path = "data/testing-input-output/fluid_simulation_input.json"
     output_file_path = "data/testing-input-output/boundary_conditions.json"
     main(input_file_path, output_file_path)
+
+
+
