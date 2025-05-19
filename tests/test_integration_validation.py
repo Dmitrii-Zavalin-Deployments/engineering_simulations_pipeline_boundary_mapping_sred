@@ -42,8 +42,8 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
 
     def test_extreme_fluid_conditions(self):
         """Ensure solver correctly handles extreme velocity inputs."""
-        extreme_input = {"fluid_velocity": 50, "density": 1000, "viscosity": 0.001002}
-        
+        extreme_input = {"fluid_velocity": 50, "density": 1000, "viscosity": 0.001002, "pressure": 101325}  # Added pressure
+
         try:
             boundary_conditions = generate_boundary_conditions(extreme_input)
             self.assertLessEqual(
