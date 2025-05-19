@@ -46,12 +46,15 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
 
         try:
             boundary_conditions = generate_boundary_conditions(extreme_input)
+            print("DEBUG: boundary_conditions =", boundary_conditions)  # Debugging statement
             self.assertLessEqual(
                 boundary_conditions["outlet_boundary"]["velocity"][0], 50,
                 "❌ Extreme velocity case not handled properly!"
             )
         except NameError:
             self.fail("❌ generate_boundary_conditions function is missing or incorrectly imported!")
+        except KeyError as e:
+            self.fail(f"❌ KeyError: {e} - 'velocity' missing from outlet boundary!")
 
     def test_dynamic_outlet_conditions(self):
         """Ensure outlet pressure and velocity adjust dynamically."""
