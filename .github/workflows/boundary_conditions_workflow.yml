@@ -37,9 +37,15 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/download_from_dropbox.sh
 
-      # ✅ 6️⃣ Verify `.obj` File Exists in `downloaded_simulation_files/`
-      - name: Check `simulation_mesh.obj`
-        run: ls -l downloaded_simulation_files/
+      # ✅ 6️⃣ Verify Downloaded Files Exist (Programmatic Check)
+      - name: Verify File Existence
+        run: |
+          if [ -f downloaded_simulation_files/simulation_mesh.obj ] && [ -f downloaded_simulation_files/fluid_simulation_input.json ]; then
+            echo "✅ Both simulation_mesh.obj and fluid_simulation_input.json were downloaded successfully."
+          else
+            echo "❌ ERROR: One or both of the required files were not found!"
+            exit 1 # Stop the workflow if files are missing
+          fi
 
       # ✅ 7️⃣ Delete Previous `boundary_conditions.json` If Exists
       - name: Delete Previous Boundary Conditions JSON
@@ -51,9 +57,9 @@ jobs:
             echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
           fi
 
-      # ✅ 8️⃣ Run Boundary Conditions Script with `simulation_mesh.obj`
+      # ✅ 8️⃣ Run Boundary Conditions Script (Assuming it uses both files)
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py ./downloaded_simulation_files/simulation_mesh.obj
+        run: python src/boundary_conditions.py ./downloaded_simulation_files/simulation_mesh.obj ./downloaded_simulation_files/fluid_simulation_input.json
 
       # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
