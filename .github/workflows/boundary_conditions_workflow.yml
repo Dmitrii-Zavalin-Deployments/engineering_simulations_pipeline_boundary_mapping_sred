@@ -25,6 +25,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # NEW: Add the 'src' directory to Python's PATH
+      - name: Add src to Python Path
+        run: |
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/src:$PYTHONPATH" >> $GITHUB_ENV
+
       # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script
       - name: Make `download_from_dropbox.sh` Executable
         run: chmod +x src/download_from_dropbox.sh
@@ -59,11 +64,17 @@ jobs:
 
       # ✅ 8️⃣ Run Boundary Conditions Script (Assuming it uses both files)
       - name: Generate Boundary Conditions
-        run: python src/boundary_conditions.py ./downloaded_simulation_files/simulation_mesh.obj ./downloaded_simulation_files/fluid_simulation_input.json
+        # We need to change the working directory to `src` for the direct import to work easily,
+        # or adjust the script's internal paths to be absolute from GITHUB_WORKSPACE.
+        # Changing working directory is usually cleaner for scripts.
+        working-directory: ./src
+        run: python boundary_conditions.py ../downloaded_simulation_files/simulation_mesh.obj ../downloaded_simulation_files/fluid_simulation_input.json
 
       # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
-        run: ls -l downloaded_simulation_files/
+        # Note: 'downloaded_simulation_files/' is now relative to the root, not 'src'
+        # So we need to go up one level from 'src'
+        run: ls -l ../downloaded_simulation_files/
 
       # ✅ 1️⃣0️⃣ Validate `boundary_conditions.json` Formatting
       - name: Check JSON Formatting
