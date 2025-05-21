@@ -40,7 +40,7 @@ jobs:
       # ✅ 6️⃣ Verify Downloaded Files Exist (Programmatic Check)
       - name: Verify File Existence
         run: |
-          if [ -f downloaded_simulation_files/simulation_mesh.obj ] && [ -f downloaded_simulation_files/fluid_simulation_input.json ]; then
+          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/simulation_mesh.obj ] && [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json ]; then
             echo "✅ Both simulation_mesh.obj and fluid_simulation_input.json were downloaded successfully."
           else
             echo "❌ ERROR: One or both of the required files were not found!"
@@ -50,8 +50,8 @@ jobs:
       # ✅ 7️⃣ Delete Previous `boundary_conditions.json` If Exists
       - name: Delete Previous Boundary Conditions JSON
         run: |
-          if [ -f downloaded_simulation_files/boundary_conditions.json ]; then
-            rm downloaded_simulation_files/boundary_conditions.json
+          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/boundary_conditions.json ]; then
+            rm $GITHUB_WORKSPACE/downloaded_simulation_files/boundary_conditions.json
             echo "🗑️ Deleted previous boundary_conditions.json file."
           else
             echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
@@ -60,7 +60,7 @@ jobs:
       # ✅ 8️⃣ Run Boundary Conditions Script
       - name: Generate Boundary Conditions
         working-directory: ./src
-        run: python boundary_conditions.py ../downloaded_simulation_files/simulation_mesh.obj ../downloaded_simulation_files/fluid_simulation_input.json
+        run: python boundary_conditions.py $GITHUB_WORKSPACE/downloaded_simulation_files/simulation_mesh.obj $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
 
       # ✅ Debug: List Directory Before Verifying Output Files
       - name: Debug Directory Structure Before Verification
@@ -68,7 +68,12 @@ jobs:
 
       # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
-        run: ls -l ../downloaded_simulation_files/
+        run: ls -l $GITHUB_WORKSPACE/downloaded_simulation_files/
+
+      # ✅ 🔟 Run Unit and Integration Tests
+      - name: Run Tests
+        run: |
+          python -m unittest discover -s tests -p "*.py"
 
 
 
