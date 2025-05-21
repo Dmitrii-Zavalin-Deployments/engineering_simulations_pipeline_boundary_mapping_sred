@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from pint import UnitRegistry
-from src.download_dropbox_files import download_files_from_dropbox  # Corrected import path
+from download_dropbox_files import download_files_from_dropbox  # Removed 'src.'
 
 # Initialize unit registry for physical properties
 ureg = UnitRegistry()
@@ -124,7 +124,7 @@ def save_output_file(boundary_conditions, output_file_path):
 # Main function: Load input, validate, process boundary conditions, enforce stability, and save output
 def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
-    
+
     print("🔄 Downloading required files from Dropbox...")
     fetch_simulation_files()  # Ensure simulation files are downloaded before proceeding
 
