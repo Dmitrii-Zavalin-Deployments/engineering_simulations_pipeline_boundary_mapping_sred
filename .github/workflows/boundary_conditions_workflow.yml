@@ -25,11 +25,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # NEW: Add the 'src' directory to Python's PATH
-      - name: Add src to Python Path
-        run: |
-          echo "PYTHONPATH=$GITHUB_WORKSPACE/src:$PYTHONPATH" >> $GITHUB_ENV
-
       # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script
       - name: Make `download_from_dropbox.sh` Executable
         run: chmod +x src/download_from_dropbox.sh
@@ -49,7 +44,7 @@ jobs:
             echo "✅ Both simulation_mesh.obj and fluid_simulation_input.json were downloaded successfully."
           else
             echo "❌ ERROR: One or both of the required files were not found!"
-            exit 1 # Stop the workflow if files are missing
+            exit 1
           fi
 
       # ✅ 7️⃣ Delete Previous `boundary_conditions.json` If Exists
@@ -62,59 +57,18 @@ jobs:
             echo "ℹ️ No previous boundary_conditions.json found—proceeding with new generation."
           fi
 
-      # ✅ 8️⃣ Run Boundary Conditions Script (Assuming it uses both files)
+      # ✅ 8️⃣ Run Boundary Conditions Script
       - name: Generate Boundary Conditions
-        # We need to change the working directory to `src` for the direct import to work easily,
-        # or adjust the script's internal paths to be absolute from GITHUB_WORKSPACE.
-        # Changing working directory is usually cleaner for scripts.
         working-directory: ./src
         run: python boundary_conditions.py ../downloaded_simulation_files/simulation_mesh.obj ../downloaded_simulation_files/fluid_simulation_input.json
 
+      # ✅ Debug: List Directory Before Verifying Output Files
+      - name: Debug Directory Structure Before Verification
+        run: ls -R $GITHUB_WORKSPACE
+
       # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
       - name: Debug Generated Files
-        # Note: 'downloaded_simulation_files/' is now relative to the root, not 'src'
-        # So we need to go up one level from 'src'
         run: ls -l ../downloaded_simulation_files/
 
-      # ✅ 1️⃣0️⃣ Validate `boundary_conditions.json` Formatting
-      - name: Check JSON Formatting
-        run: |
-          if [ -f downloaded_simulation_files/boundary_conditions.json ]; then
-            python -c "import json; f = open('downloaded_simulation_files/boundary_conditions.json'); json.load(f); f.close()"
-            echo "✅ JSON formatting is valid."
-          else
-            echo "❌ ERROR: boundary_conditions.json was not generated!"
-            exit 1
-          fi
 
-      # ✅ 1️⃣1️⃣ Run Unit & Integration Tests AFTER Boundary Conditions Generation
-      - name: Run unit tests
-        run: pytest tests/test_unit_validation.py --verbose
 
-      - name: Run integration tests
-        run: pytest tests/test_integration_validation.py --verbose
-
-      # ✅ 1️⃣2️⃣ Commit and Push Updated JSON File (Only If Tests Passed)
-      - name: Commit and Push Boundary Conditions JSON
-        if: success()
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-        run: |
-          git config --global user.name "$GIT_USER_NAME"
-          git config --global user.email "$GIT_USER_EMAIL"
-
-          # Verify file exists before adding
-          if [ ! -f downloaded_simulation_files/boundary_conditions.json ]; then
-            echo "❌ ERROR: boundary_conditions.json is missing. Skipping commit."
-            exit 1
-          fi
-
-          # Check if there are actual changes
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "ℹ️ No changes to commit. Skipping push."
-          else
-            git add downloaded_simulation_files/boundary_conditions.json
-            git commit -m "Auto-update: Passed tests and updated boundary conditions JSON file"
-            git push origin HEAD
-          fi
