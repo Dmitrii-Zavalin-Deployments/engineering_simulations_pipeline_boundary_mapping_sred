@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script
+      # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script (Download)
       - name: Make `download_from_dropbox.sh` Executable
         run: chmod +x src/download_from_dropbox.sh
 
@@ -74,6 +74,18 @@ jobs:
       - name: Run Tests
         run: |
           python -m unittest discover -s tests -p "*.py"
+
+      # ✅ 1️⃣1️⃣ Grant Execution Permissions for Dropbox Shell Script (Upload)
+      - name: Make `upload_to_dropbox.sh` Executable
+        run: chmod +x src/upload_to_dropbox.sh
+
+      # ✅ 1️⃣2️⃣ Upload Generated Output File to Dropbox
+      - name: Upload Boundary Conditions to Dropbox
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: src/upload_to_dropbox.sh
 
 
 
