@@ -79,6 +79,12 @@ jobs:
       - name: Make `upload_to_dropbox.sh` Executable
         run: chmod +x src/upload_to_dropbox.sh
 
+      # ✅ 🔍 Debugging Step BEFORE Uploading to Dropbox
+      - name: Debug Before Dropbox Upload
+        run: |
+          echo "🔍 Checking directory structure before upload..."
+          ls -R $GITHUB_WORKSPACE
+
       # ✅ 1️⃣2️⃣ Upload Generated Output File to Dropbox
       - name: Upload Boundary Conditions to Dropbox
         env:
@@ -86,6 +92,3 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
-
-
-
