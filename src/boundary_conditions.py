@@ -2,37 +2,37 @@ import os
 import json
 import numpy as np
 from pint import UnitRegistry
-from download_dropbox_files import download_files_from_dropbox  # Removed 'src.'
 
 # Initialize unit registry for physical properties
 ureg = UnitRegistry()
 
-# Define Dropbox parameters
-dropbox_folder = "/engineering_simulations_pipeline"
-local_folder = "data/testing-input-output"
-log_file_path = "data/dropbox_download_log.txt"
+# Define Dropbox parameters (These are no longer needed in this script,
+# but kept as comments to show what was removed for clarity)
+# dropbox_folder = "/engineering_simulations_pipeline"
+# local_folder = "data/testing-input-output"
+# log_file_path = "data/dropbox_download_log.txt"
 
-# Define Dropbox API credentials (ensure these are securely stored in environment variables)
-refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
-client_id = os.getenv("DROPBOX_CLIENT_ID")
-client_secret = os.getenv("DROPBOX_CLIENT_SECRET")
+# Define Dropbox API credentials (These are no longer needed in this script)
+# refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+# client_id = os.getenv("DROPBOX_CLIENT_ID")
+# client_secret = os.getenv("DROPBOX_CLIENT_SECRET")
 
-# Download required input files from Dropbox
-def fetch_simulation_files():
-    """Fetch simulation input files from Dropbox."""
-    files_to_download = ["fluid_simulation_input.json", "simulation_mesh.obj"]
+# Removed: Download required input files from Dropbox function
+# def fetch_simulation_files():
+#     """Fetch simulation input files from Dropbox."""
+#     files_to_download = ["fluid_simulation_input.json", "simulation_mesh.obj"]
 
-    if not refresh_token or not client_id or not client_secret:
-        raise ValueError("❌ ERROR: Missing Dropbox API credentials! Ensure environment variables are set.")
+#     if not refresh_token or not client_id or not client_secret:
+#         raise ValueError("❌ ERROR: Missing Dropbox API credentials! Ensure environment variables are set.")
 
-    print("🔄 Downloading input files from Dropbox...")
-    download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path)
+#     print("🔄 Downloading input files from Dropbox...")
+#     download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path)
 
-    # Verify files are downloaded
-    for file in files_to_download:
-        file_path = os.path.join(local_folder, file)
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"❌ ERROR: Missing required file '{file}' after Dropbox download.")
+#     # Verify files are downloaded
+#     for file in files_to_download:
+#         file_path = os.path.join(local_folder, file)
+#         if not os.path.exists(file_path):
+#             raise FileNotFoundError(f"❌ ERROR: Missing required file '{file}' after Dropbox download.")
 
 # Load input file containing fluid properties
 def load_input_file(file_path):
@@ -62,7 +62,12 @@ def load_input_file(file_path):
 def process_input(input_data):
     """Validates required fields and ensures defaults where necessary."""
     required_fields = ["fluid_velocity", "density", "viscosity", "pressure"]
-    default_values = {"pressure": 101325 * ureg.pascal, "fluid_velocity": np.array([0.0, 0.0, 0.0]) * ureg.meter / ureg.second}
+    # Default values for Pint quantities need to be handled carefully if directly assigned here.
+    # It's better to assign raw values and convert after checking for existence.
+    default_values = {
+        "pressure": 101325, # in Pascals
+        "fluid_velocity": np.array([0.0, 0.0, 0.0]) # in m/s
+    }
 
     for field in required_fields:
         if field not in input_data:
@@ -122,20 +127,30 @@ def save_output_file(boundary_conditions, output_file_path):
     print(f"✅ Boundary conditions saved to: {output_file_path}")
 
 # Main function: Load input, validate, process boundary conditions, enforce stability, and save output
-def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
+def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
 
-    print("🔄 Downloading required files from Dropbox...")
-    fetch_simulation_files()  # Ensure simulation files are downloaded before proceeding
+    # Removed: The call to fetch_simulation_files()
+    # print("🔄 Downloading required files from Dropbox...")
+    # fetch_simulation_files()
 
     print("🔄 Loading input data...")
-    input_data = load_input_file(input_file_path)
+    # The fluid_simulation_input.json is the second argument passed from the workflow
+    input_data = load_input_file(fluid_input_file_path)
 
     print("🔄 Enforcing numerical stability...")
     enforce_numerical_stability(input_data, dx, dt)
 
     print("🔄 Generating boundary conditions...")
     boundary_conditions = generate_boundary_conditions(input_data)
+
+    # Construct the output path for boundary_conditions.json
+    # It should be in the same directory as the input files, which is
+    # downloaded_simulation_files/ relative to the root when working-directory is src/
+    # So, we derive it from the fluid_input_file_path
+    output_dir = os.path.dirname(fluid_input_file_path)
+    output_file_path = os.path.join(output_dir, "boundary_conditions.json")
+
 
     print("🔄 Saving results...")
     save_output_file(boundary_conditions, output_file_path)
@@ -144,9 +159,20 @@ def main(input_file_path, output_file_path, dx=0.01 * ureg.meter, dt=0.001 * ure
 
 # Example usage: Processing input file and generating output
 if __name__ == "__main__":
-    input_file_path = "data/testing-input-output/fluid_simulation_input.json"
-    output_file_path = "data/testing-input-output/boundary_conditions.json"
-    main(input_file_path, output_file_path)
+    import sys
+    # When run directly, assume arguments are passed or define default paths
+    if len(sys.argv) == 3:
+        # The workflow passes mesh_file_path and then fluid_input_file_path
+        mesh_arg_path = sys.argv[1]
+        fluid_input_arg_path = sys.argv[2]
+        main(mesh_arg_path, fluid_input_arg_path)
+    else:
+        # For local testing, use relative paths that align with your data structure
+        print("ℹ️ Running with default local paths for testing.")
+        # Adjust these paths if your local setup differs
+        default_mesh_path = "../downloaded_simulation_files/simulation_mesh.obj"
+        default_fluid_input_path = "../downloaded_simulation_files/fluid_simulation_input.json"
+        main(default_mesh_path, default_fluid_input_path)
 
 
 
