@@ -71,9 +71,9 @@ jobs:
         run: ls -l $GITHUB_WORKSPACE/downloaded_simulation_files/
 
       # ✅ 🔟 Run Unit and Integration Tests
-      # - name: Run Tests
-      #   run: |
-      #     python -m unittest discover -s tests -p "*.py"
+      - name: Run Tests
+        run: |
+          python -m unittest discover -s tests -p "*.py"
 
       # ✅ 1️⃣1️⃣ Grant Execution Permissions for Dropbox Shell Script (Upload)
       - name: Make `upload_to_dropbox.sh` Executable
