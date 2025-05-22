@@ -59,7 +59,7 @@ def download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, cli
                         print(entry.name)  # Print the name of the downloaded file to GitHub Actions logs
 
                         # Delete the file from Dropbox after downloading
-                        delete_file_from_dropbox(dbx, entry.path_lower, log_file)
+                        # delete_file_from_dropbox(dbx, entry.path_lower, log_file)
 
                 has_more = result.has_more
                 cursor = result.cursor
