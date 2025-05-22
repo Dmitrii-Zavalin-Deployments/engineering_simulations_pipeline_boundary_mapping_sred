@@ -100,7 +100,7 @@ def apply_boundary_conditions(input_data, dx_value, dt_value):
         "inlet_boundary": {
             "type": "velocity_inlet",
             "velocity": inlet_velocity_magnitude,
-            "direction": [1.0, 0.0, 0.0], # Assuming flow along X-axis, can be made configurable
+            # Removed "direction": [1.0, 0.0, 0.0], as it's redundant when velocity is a vector
             "pressure": inlet_pressure_magnitude, # Inlet static pressure
             "fluid_properties": {
                 "temperature": fluid_temperature_magnitude,
@@ -217,11 +217,8 @@ if __name__ == "__main__":
             with open(default_fluid_input_path, 'w') as f:
                 json.dump(dummy_fluid_input_content, f, indent=4)
             logger.info(f"Created dummy fluid input file for testing: {default_fluid_input_path}")
-        
+
         # No need to create a dummy mesh file for this script's current functionality
         # as it doesn't parse it.
 
         main(default_mesh_path, default_fluid_input_path)
-
-
-
