@@ -13,10 +13,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # --- Configuration for Geometric Boundary Identification ---
-# This tolerance defines how "close" a face's vertices must be to the min/max X-coordinate
+# This tolerance defines how "close" a face's vertices must be to the min/max coordinate
 # to be considered an inlet/outlet. Adjust this if your mesh has slight curves or
-# if boundaries aren't perfectly planar at the X-extrema.
-BOUNDARY_X_TOLERANCE = 1e-4 # meters (adjust as needed based on your mesh's scale)
+# if boundaries aren't perfectly planar at the extrema.
+BOUNDARY_X_TOLERANCE = 1e-3 # meters (adjusted from 1e-4, as 1e-4 might be too strict)
 # --------------------------------------------------------
 
 # Load input file containing fluid properties and simulation settings
@@ -55,11 +55,14 @@ def load_input_file(file_path):
     logger.info("Input data loaded and units processed.")
     return input_data
 
+---
+
 def parse_mesh_boundaries(mesh_file_path, tolerance=BOUNDARY_X_TOLERANCE):
     """
     Parses the OBJ mesh file to identify and return lists of face IDs for
-    inlets, outlets, and walls based on geometric extents (min/max X-coordinates)
-    with a given tolerance. Assumes flow is primarily along the X-axis.
+    inlets, outlets, and walls based on geometric extents (min/max coordinates)
+    along X, Y, or Z axes, with a given tolerance. It will try all axes
+    and select the one that identifies both an inlet and an outlet.
     """
     logger.info(f"Parsing mesh file: {mesh_file_path} to determine boundary faces based on geometry with tolerance {tolerance}.")
 
@@ -78,60 +81,89 @@ def parse_mesh_boundaries(mesh_file_path, tolerance=BOUNDARY_X_TOLERANCE):
         logger.error("❌ ERROR: Mesh loaded but contains no vertices or faces. Cannot determine boundaries.")
         raise ValueError("❌ ERROR: Mesh loaded but contains no vertices or faces.")
 
-    # Calculate bounding box extents
-    min_x = mesh.vertices[:, 0].min()
-    max_x = mesh.vertices[:, 0].max()
+    min_coords = mesh.vertices.min(axis=0) # [min_x, min_y, min_z]
+    max_coords = mesh.vertices.max(axis=0) # [max_x, max_y, max_z]
 
-    inlet_faces = []
-    outlet_faces = []
-    wall_faces = []
+    potential_boundaries = {} # Store results for each axis
 
-    # Iterate through each face and classify it
-    for face_idx, face_vertices_indices in enumerate(mesh.faces):
-        # Get the actual vertex coordinates for the current face
-        face_vertices = mesh.vertices[face_vertices_indices]
-        face_x_coords = face_vertices[:, 0]
+    for axis_idx, axis_name in enumerate(['X', 'Y', 'Z']):
+        current_min_coord = min_coords[axis_idx]
+        current_max_coord = max_coords[axis_idx]
 
-        # Check if ALL vertices of this face are within the 'inlet' X-zone
-        # i.e., all X-coordinates of the face are less than (min_x + tolerance)
-        is_inlet_zone = np.all(face_x_coords <= (min_x + tolerance))
+        inlet_faces_axis = []
+        outlet_faces_axis = []
+        wall_faces_axis = []
 
-        # Check if ALL vertices of this face are within the 'outlet' X-zone
-        # i.e., all X-coordinates of the face are greater than (max_x - tolerance)
-        is_outlet_zone = np.all(face_x_coords >= (max_x - tolerance))
+        for face_idx, face_vertices_indices in enumerate(mesh.faces):
+            face_vertices = mesh.vertices[face_vertices_indices]
+            face_axis_coords = face_vertices[:, axis_idx]
 
+            # Check if ALL vertices of this face are within the 'inlet' zone for the current axis
+            is_inlet_zone = np.all(face_axis_coords <= (current_min_coord + tolerance))
 
-        if is_inlet_zone and is_outlet_zone:
-            # This case indicates a very thin mesh or a closed domain where min/max X are very close.
-            # Or a face that spans the entire domain. Classify as wall.
-            logger.warning(f"⚠️ Face {face_idx} spans both min and max X-zones (within tolerance). Classifying as wall.")
-            wall_faces.append(face_idx)
-        elif is_inlet_zone:
-            # Additional check: Ensure the face is actually *on* the min X boundary, not just in the zone.
-            # At least one vertex must be very close to min_x.
-            if np.any(np.isclose(face_x_coords, min_x, atol=tolerance)):
-                inlet_faces.append(face_idx)
+            # Check if ALL vertices of this face are within the 'outlet' zone for the current axis
+            is_outlet_zone = np.all(face_axis_coords >= (current_max_coord - tolerance))
+
+            if is_inlet_zone and is_outlet_zone:
+                # This face spans the entire domain extent in this axis, classify as wall.
+                wall_faces_axis.append(face_idx)
+            elif is_inlet_zone:
+                # Additional check: At least one vertex must be very close to the min coordinate.
+                if np.any(np.isclose(face_axis_coords, current_min_coord, atol=tolerance)):
+                    inlet_faces_axis.append(face_idx)
+                else:
+                    # If it's in the zone but not truly *on* the boundary, it's a wall
+                    wall_faces_axis.append(face_idx)
+            elif is_outlet_zone:
+                # Additional check: At least one vertex must be very close to the max coordinate.
+                if np.any(np.isclose(face_axis_coords, current_max_coord, atol=tolerance)):
+                    outlet_faces_axis.append(face_idx)
+                else:
+                    # If it's in the zone but not truly *on* the boundary, it's a wall
+                    wall_faces_axis.append(face_idx)
             else:
-                wall_faces.append(face_idx)
-        elif is_outlet_zone:
-            # Additional check: Ensure the face is actually *on* the max X boundary.
-            if np.any(np.isclose(face_x_coords, max_x, atol=tolerance)):
-                outlet_faces.append(face_idx)
-            else:
-                wall_faces.append(face_idx)
+                wall_faces_axis.append(face_idx) # All other faces are walls
+
+        # Store the results for this axis only if it found both inlets and outlets
+        if len(inlet_faces_axis) > 0 and len(outlet_faces_axis) > 0:
+            potential_boundaries[axis_name] = {
+                'inlet': inlet_faces_axis,
+                'outlet': outlet_faces_axis,
+                'wall': wall_faces_axis,
+                'total_boundary_faces': len(inlet_faces_axis) + len(outlet_faces_axis)
+            }
+            logger.info(f"Candidate Axis {axis_name}: Inlet {len(inlet_faces_axis)}, Outlet {len(outlet_faces_axis)}, Wall {len(wall_faces_axis)}.")
         else:
-            wall_faces.append(face_idx) # All other faces are walls
+            logger.info(f"Axis {axis_name} did not identify both inlet and outlet (Inlet: {len(inlet_faces_axis)}, Outlet: {len(outlet_faces_axis)}).")
 
-    if not inlet_faces:
-        logger.warning(f"⚠️ No inlet faces identified based on X-coordinate range [{min_x}, {min_x+tolerance}]. Please check mesh geometry or 'BOUNDARY_X_TOLERANCE'.")
-    if not outlet_faces:
-        logger.warning(f"⚠️ No outlet faces identified based on X-coordinate range [{max_x-tolerance}, {max_x}]. Please check mesh geometry or 'BOUNDARY_X_TOLERANCE'.")
-    if len(inlet_faces) + len(outlet_faces) + len(wall_faces) != len(mesh.faces):
-        logger.error("❌ ERROR: Discrepancy in total classified faces vs. total mesh faces. Some faces might be unclassified.")
-        raise RuntimeError("Face classification error.")
 
-    logger.info(f"Mesh boundary faces identified: Inlet {len(inlet_faces)}, Outlet {len(outlet_faces)}, Wall {len(wall_faces)} (Total: {len(mesh.faces)}).")
-    return inlet_faces, outlet_faces, wall_faces
+    # Decision logic: Select the axis that identified the most distinct boundary faces.
+    # If no axis identified both inlet and outlet, then all faces are considered walls.
+    if not potential_boundaries:
+        logger.warning("⚠️ No suitable inlet/outlet boundaries found along X, Y, or Z axes using geometric extrema. All faces classified as walls.")
+        all_faces = list(range(len(mesh.faces)))
+        return [], [], all_faces # Return empty inlets/outlets and all walls
+
+    best_axis = None
+    max_boundary_faces_count = -1
+
+    for axis_name, data in potential_boundaries.items():
+        if data['total_boundary_faces'] > max_boundary_faces_count:
+            max_boundary_faces_count = data['total_boundary_faces']
+            best_axis = axis_name
+
+    if best_axis:
+        chosen_boundaries = potential_boundaries[best_axis]
+        logger.info(f"✅ Auto-selected {best_axis}-axis for boundary identification. Identified Inlet {len(chosen_boundaries['inlet'])}, Outlet {len(chosen_boundaries['outlet'])} faces.")
+        return chosen_boundaries['inlet'], chosen_boundaries['outlet'], chosen_boundaries['wall']
+    else:
+        # Fallback, though this path should ideally not be hit if potential_boundaries is not empty.
+        logger.error("❌ ERROR: Unexpected logic failure in axis selection. Defaulting to all walls.")
+        all_faces = list(range(len(mesh.faces)))
+        return [], [], all_faces
+
+
+---
 
 def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     """Assigns inlet, outlet, and wall boundary conditions based on input_data
@@ -227,6 +259,8 @@ def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     logger.info("Boundary conditions structured successfully from input data and mesh parsing.")
     return boundary_conditions
 
+---
+
 def enforce_numerical_stability(input_data, dx, dt):
     """
     Checks CFL condition for numerical stability. Requires 'fluid_velocity'
@@ -252,6 +286,8 @@ def enforce_numerical_stability(input_data, dx, dt):
         raise ValueError(f"❌ ERROR: CFL condition violated – CFL = {cfl_value:.4f}. Adjust time-step or grid spacing.")
     logger.info("CFL condition satisfied.")
 
+---
+
 def save_output_file(boundary_conditions, output_file_path):
     """Writes computed boundary conditions to output JSON file."""
     # Ensure output directory exists
@@ -265,6 +301,8 @@ def save_output_file(boundary_conditions, output_file_path):
         json.dump(boundary_conditions, file, indent=4)
 
     logger.info(f"✅ Boundary conditions saved to: {output_file_path}")
+
+---
 
 def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
