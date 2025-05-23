@@ -247,7 +247,8 @@ class TestNumericalStability(unittest.TestCase):
         input_data = {"fluid_velocity": 50.0} # This will cause CFL > 1
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
-        with self.assertRaisesRegex(ValueError, "CFL condition violated"): # Match core message
+        # Adjusted regex to account for logging prefix
+        with self.assertRaisesRegex(ValueError, ".*CFL condition violated"):
             enforce_numerical_stability(input_data, dx, dt)
 
     def test_enforce_numerical_stability_skips_without_fluid_velocity(self):
@@ -266,8 +267,8 @@ class TestNumericalStability(unittest.TestCase):
         input_data = {"fluid_velocity": "invalid"}
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
-        # Match core message
-        with self.assertRaisesRegex(ValueError, "'fluid_velocity' in input data must be a numerical value"):
+        # Adjusted regex to account for logging prefix
+        with self.assertRaisesRegex(ValueError, ".*'fluid_velocity' in input data must be a numerical value"):
             enforce_numerical_stability(input_data, dx, dt)
 
 
