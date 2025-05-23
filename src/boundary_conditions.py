@@ -3,6 +3,7 @@ import json
 import numpy as np
 from pint import UnitRegistry
 import logging
+import trimesh # New dependency for OBJ parsing
 
 # Initialize unit registry for physical properties
 ureg = UnitRegistry()
@@ -39,44 +40,91 @@ def load_input_file(file_path):
         logger.error("❌ ERROR: 'simulation_settings' section is missing or malformed in the input file. It must be a dictionary.")
         raise ValueError("❌ ERROR: 'simulation_settings' section is missing or malformed in the input file.")
 
-    # Ensure boundary_conditions_input exist and are structured
-    if "boundary_conditions_input" not in input_data or not isinstance(input_data["boundary_conditions_input"], dict):
-        logger.error("❌ ERROR: 'boundary_conditions_input' section is missing or malformed in the input file. This is now required and must be a dictionary.")
-        raise ValueError("❌ ERROR: 'boundary_conditions_input' section is missing or malformed in the input file.")
+    # We no longer need 'boundary_conditions_input' for face IDs here.
+    # But we still need the types and properties for inlet/outlet/wall.
+    # Let's add a general 'boundary_properties_config' to hold these.
+    if "boundary_properties_config" not in input_data or not isinstance(input_data["boundary_properties_config"], dict):
+        logger.error("❌ ERROR: 'boundary_properties_config' section is missing or malformed in the input file. This is now required and must be a dictionary.")
+        raise ValueError("❌ ERROR: 'boundary_properties_config' section is missing or malformed in the input file.")
+
 
     logger.info("Input data loaded and units processed.")
     return input_data
 
-def parse_mesh_boundaries(input_data):
+def parse_mesh_boundaries(mesh_file_path):
     """
-    Function to retrieve boundary face IDs from the input_data.
-    All face IDs must be explicitly provided in the input JSON.
+    Parses the OBJ mesh file to identify and return lists of face IDs for
+    inlets, outlets, and walls based on geometric extents (min/max X-coordinates).
+    Assumes flow is primarily along the X-axis.
     """
-    logger.info("Retrieving mesh boundary faces from input data.")
+    logger.info(f"Parsing mesh file: {mesh_file_path} to determine boundary faces based on geometry.")
 
-    bc_input = input_data["boundary_conditions_input"]
+    if not os.path.exists(mesh_file_path):
+        logger.error(f"❌ ERROR: Mesh file '{mesh_file_path}' was not found.")
+        raise FileNotFoundError(f"❌ ERROR: Mesh file '{mesh_file_path}' was not found.")
 
-    required_face_lists = ["inlet_faces", "outlet_faces", "wall_faces"]
-    for face_list_name in required_face_lists:
-        if face_list_name not in bc_input or not isinstance(bc_input[face_list_name], list):
-            logger.error(f"❌ ERROR: Required face list '{face_list_name}' is missing or not a list under 'boundary_conditions_input' in the input file.")
-            raise ValueError(f"❌ ERROR: Required face list '{face_list_name}' must be provided as a list in the input JSON.")
+    try:
+        # Load the mesh using trimesh
+        mesh = trimesh.load(mesh_file_path)
+    except Exception as e:
+        logger.error(f"❌ ERROR: Failed to load mesh file '{mesh_file_path}'. Ensure it's a valid OBJ. Error: {e}")
+        raise ValueError(f"❌ ERROR: Failed to load mesh file '{mesh_file_path}'. Error: {e}")
 
-    inlet_faces = bc_input["inlet_faces"]
-    outlet_faces = bc_input["outlet_faces"]
-    wall_faces = bc_input["wall_faces"]
+    if mesh.vertices is None or mesh.faces is None:
+        logger.error("❌ ERROR: Mesh loaded but contains no vertices or faces. Cannot determine boundaries.")
+        raise ValueError("❌ ERROR: Mesh loaded but contains no vertices or faces.")
 
-    logger.info("Mesh boundary faces retrieved from input.")
+    # Calculate bounding box extents
+    min_coords = mesh.vertices.min(axis=0) # [min_x, min_y, min_z]
+    max_coords = mesh.vertices.max(axis=0) # [max_x, max_y, max_z]
+
+    # Use a small tolerance for floating point comparisons
+    tolerance = 1e-6
+
+    inlet_faces = []
+    outlet_faces = []
+    wall_faces = []
+
+    # Iterate through each face and classify it
+    # trimesh.faces are 0-indexed already
+    for face_idx, face_vertices_indices in enumerate(mesh.faces):
+        # Get the actual vertex coordinates for the current face
+        face_vertices = mesh.vertices[face_vertices_indices]
+
+        # Check if ALL vertices of this face are at the minimum X-coordinate
+        # This identifies the "inlet" boundary
+        is_inlet = np.all(np.isclose(face_vertices[:, 0], min_coords[0], atol=tolerance))
+
+        # Check if ALL vertices of this face are at the maximum X-coordinate
+        # This identifies the "outlet" boundary
+        is_outlet = np.all(np.isclose(face_vertices[:, 0], max_coords[0], atol=tolerance))
+
+        if is_inlet and is_outlet:
+            logger.warning(f"⚠️ Face {face_idx} is at both min and max X-coordinate. This might indicate a very thin mesh or a closed domain. Classifying as wall.")
+            wall_faces.append(face_idx)
+        elif is_inlet:
+            inlet_faces.append(face_idx)
+        elif is_outlet:
+            outlet_faces.append(face_idx)
+        else:
+            wall_faces.append(face_idx) # All other faces are walls
+
+    if not inlet_faces:
+        logger.warning("⚠️ No inlet faces identified based on min X-coordinate. Please check mesh geometry or boundary identification logic.")
+    if not outlet_faces:
+        logger.warning("⚠️ No outlet faces identified based on max X-coordinate. Please check mesh geometry or boundary identification logic.")
+
+    logger.info(f"Mesh boundary faces identified: Inlet {len(inlet_faces)}, Outlet {len(outlet_faces)}, Wall {len(wall_faces)}.")
     return inlet_faces, outlet_faces, wall_faces
 
-def apply_boundary_conditions(input_data, dx_value, dt_value):
+def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     """Assigns inlet, outlet, and wall boundary conditions based on input_data
-       and simulation parameters dx, dt."""
+       and simulation parameters dx, dt, and mesh boundary information from OBJ."""
 
-    logger.info("Applying boundary conditions from input data...")
+    logger.info("Applying boundary conditions from input data and mesh parsing...")
 
-    # Get boundary face IDs
-    inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries(input_data)
+    # Get boundary face IDs by parsing the actual mesh file
+    inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries(mesh_file_path)
 
     # Extract magnitudes from Pint quantities for JSON serialization
     inlet_pressure_magnitude = input_data["static_pressure"].to(ureg.pascal).magnitude
@@ -91,45 +139,44 @@ def apply_boundary_conditions(input_data, dx_value, dt_value):
         raise ValueError("❌ ERROR: 'suggested_time_step' is required in simulation_settings.")
     suggested_time_step_magnitude = simulation_settings["suggested_time_step"]
 
-
-    # Retrieve all boundary type and property information directly from input_data
-    boundary_conditions_input = input_data["boundary_conditions_input"] # Already checked to be a dict
+    # Retrieve all boundary type and property information directly from input_data's new section
+    boundary_props_config = input_data["boundary_properties_config"] # Already checked to be a dict
 
     # Validate required boundary condition sections
     required_boundaries_sections = ["inlet_boundary", "outlet_boundary", "wall_boundary"]
     for section_name in required_boundaries_sections:
-        if section_name not in boundary_conditions_input or not isinstance(boundary_conditions_input[section_name], dict):
-            logger.error(f"❌ ERROR: Required boundary section '{section_name}' is missing or malformed (not a dictionary) in 'boundary_conditions_input' in the input file.")
+        if section_name not in boundary_props_config or not isinstance(boundary_props_config[section_name], dict):
+            logger.error(f"❌ ERROR: Required boundary section '{section_name}' is missing or malformed (not a dictionary) in 'boundary_properties_config' in the input file.")
             raise ValueError(f"❌ ERROR: Required boundary section '{section_name}' must be provided as a dictionary in input.")
 
-    inlet_bc_props = boundary_conditions_input["inlet_boundary"]
-    outlet_bc_props = boundary_conditions_input["outlet_boundary"]
-    wall_bc_props = boundary_conditions_input["wall_boundary"]
+    inlet_bc_props = boundary_props_config["inlet_boundary"]
+    outlet_bc_props = boundary_props_config["outlet_boundary"]
+    wall_bc_props = boundary_props_config["wall_boundary"]
 
     # Validate essential properties within boundary sections
     if "type" not in inlet_bc_props:
-        logger.error("❌ ERROR: 'type' is missing for 'inlet_boundary' in the input file.")
+        logger.error("❌ ERROR: 'type' is missing for 'inlet_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'type' is required for 'inlet_boundary'.")
     if "type" not in outlet_bc_props:
-        logger.error("❌ ERROR: 'type' is missing for 'outlet_boundary' in the input file.")
+        logger.error("❌ ERROR: 'type' is missing for 'outlet_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'type' is required for 'outlet_boundary'.")
     if "no_slip" not in wall_bc_props:
-        logger.error("❌ ERROR: 'no_slip' is missing for 'wall_boundary' in the input file.")
+        logger.error("❌ ERROR: 'no_slip' is missing for 'wall_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'no_slip' is required for 'wall_boundary'.")
     if "wall_properties" not in wall_bc_props or not isinstance(wall_bc_props["wall_properties"], dict):
-        logger.error("❌ ERROR: 'wall_properties' is missing or malformed for 'wall_boundary' in the input file.")
+        logger.error("❌ ERROR: 'wall_properties' is missing or malformed for 'wall_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'wall_properties' is required for 'wall_boundary'.")
     if "roughness" not in wall_bc_props["wall_properties"]:
-        logger.error("❌ ERROR: 'roughness' is missing for 'wall_properties' in 'wall_boundary' in the input file.")
+        logger.error("❌ ERROR: 'roughness' is missing for 'wall_properties' in 'wall_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'roughness' is required for 'wall_properties'.")
     if "heat_transfer" not in wall_bc_props["wall_properties"]:
-        logger.error("❌ ERROR: 'heat_transfer' is missing for 'wall_properties' in 'wall_boundary' in the input file.")
+        logger.error("❌ ERROR: 'heat_transfer' is missing for 'wall_properties' in 'wall_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'heat_transfer' is required for 'wall_properties'.")
     if "wall_functions" not in wall_bc_props:
-        logger.error("❌ ERROR: 'wall_functions' is missing for 'wall_boundary' in the input file.")
+        logger.error("❌ ERROR: 'wall_functions' is missing for 'wall_boundary' in 'boundary_properties_config'.")
         raise ValueError("❌ ERROR: 'wall_functions' is required for 'wall_boundary'.")
-    if "velocity" not in outlet_bc_props: # Check for velocity specifically for outlet
-        logger.error("❌ ERROR: 'velocity' is missing for 'outlet_boundary' in the input file (use null if velocity is unknown/calculated).")
+    if "velocity" not in outlet_bc_props:
+        logger.error("❌ ERROR: 'velocity' is missing for 'outlet_boundary' in 'boundary_properties_config' (use null if velocity is unknown/calculated).")
         raise ValueError("❌ ERROR: 'velocity' is required for 'outlet_boundary' (can be null).")
 
 
@@ -162,13 +209,7 @@ def apply_boundary_conditions(input_data, dx_value, dt_value):
         "simulation_settings": simulation_settings # This will include only what's in the input
     }
 
-    # Ensure cell_storage_format is directly taken from simulation_settings if present
-    # No more typo, and no default if missing
-    if "cell_storage_format" not in simulation_settings:
-        logger.warning("⚠️ 'cell_storage_format' not found in simulation_settings. It will be omitted from the output.")
-    # The entire simulation_settings dict is assigned, so individual keys are handled.
-
-    logger.info("Boundary conditions structured successfully from input data.")
+    logger.info("Boundary conditions structured successfully from input data and mesh parsing.")
     return boundary_conditions
 
 def enforce_numerical_stability(input_data, dx, dt):
@@ -215,14 +256,14 @@ def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 *
 
     logger.info("Starting boundary condition processing pipeline.")
 
-    # Load input data from fluid_simulation_input.json
+    # Load fluid input data. boundary_properties_config is now needed here.
     input_data = load_input_file(fluid_input_file_path)
 
     # Enforce numerical stability (CFL check only if fluid_velocity is provided in input)
     enforce_numerical_stability(input_data, dx, dt)
 
-    # Generate boundary conditions
-    boundary_conditions = apply_boundary_conditions(input_data, dx, dt)
+    # Generate boundary conditions, now passing mesh_file_path to apply_boundary_conditions
+    boundary_conditions = apply_boundary_conditions(input_data, dx, dt, mesh_file_path)
 
     # Construct the output path for boundary_conditions.json
     output_dir = os.path.dirname(fluid_input_file_path)
@@ -243,19 +284,18 @@ if __name__ == "__main__":
         fluid_input_arg_path = sys.argv[2]
         main(mesh_arg_path, fluid_input_arg_path)
     else:
-        logger.info("ℹ️ Running with default local paths for testing. Ensure 'fluid_simulation_input.json' exists at the specified path.")
+        logger.info("ℹ️ Running with default local paths for testing. Ensure 'fluid_simulation_input.json' and 'simulation_mesh.obj' exist at the specified paths.")
         # Adjust these paths if your local setup differs
-        default_mesh_path = "../downloaded_simulation_files/simulation_mesh.obj" # Still a placeholder; actual parsing would go here.
+        default_mesh_path = "../downloaded_simulation_files/simulation_mesh.obj"
         default_fluid_input_path = "../downloaded_simulation_files/fluid_simulation_input.json"
+
+        # IMPORTANT: The user MUST provide fluid_simulation_input.json and simulation_mesh.obj externally.
+        # If the files are missing or incomplete, the script will raise errors.
 
         # Create dummy input directory if it doesn't exist
         dummy_input_dir = os.path.dirname(default_fluid_input_path)
         if not os.path.exists(dummy_input_dir):
             os.makedirs(dummy_input_dir)
             logger.info(f"Created dummy input directory: {dummy_input_dir}")
-
-        # IMPORTANT: This block no longer creates a dummy fluid_simulation_input.json
-        # The user MUST provide it externally at default_fluid_input_path.
-        # If the file is missing or incomplete, the script will raise errors.
 
         main(default_mesh_path, default_fluid_input_path)
