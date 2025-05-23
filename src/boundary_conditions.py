@@ -55,7 +55,6 @@ def load_input_file(file_path):
     logger.info("Input data loaded and units processed.")
     return input_data
 
----
 
 def parse_mesh_boundaries(mesh_file_path, tolerance=BOUNDARY_X_TOLERANCE):
     """
@@ -163,8 +162,6 @@ def parse_mesh_boundaries(mesh_file_path, tolerance=BOUNDARY_X_TOLERANCE):
         return [], [], all_faces
 
 
----
-
 def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     """Assigns inlet, outlet, and wall boundary conditions based on input_data
        and simulation parameters dx, dt, and mesh boundary information from OBJ."""
@@ -259,7 +256,6 @@ def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     logger.info("Boundary conditions structured successfully from input data and mesh parsing.")
     return boundary_conditions
 
----
 
 def enforce_numerical_stability(input_data, dx, dt):
     """
@@ -286,7 +282,6 @@ def enforce_numerical_stability(input_data, dx, dt):
         raise ValueError(f"❌ ERROR: CFL condition violated – CFL = {cfl_value:.4f}. Adjust time-step or grid spacing.")
     logger.info("CFL condition satisfied.")
 
----
 
 def save_output_file(boundary_conditions, output_file_path):
     """Writes computed boundary conditions to output JSON file."""
@@ -302,7 +297,6 @@ def save_output_file(boundary_conditions, output_file_path):
 
     logger.info(f"✅ Boundary conditions saved to: {output_file_path}")
 
----
 
 def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
