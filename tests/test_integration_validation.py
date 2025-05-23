@@ -2,21 +2,22 @@ import unittest
 import numpy as np
 import unittest.mock as mock
 import os
-import json # Import json for loading mock input data
+import json
 
-# Import the functions directly, not the module as generate_boundary_conditions is gone
+# Import the functions directly
 from src.boundary_conditions import load_input_file, parse_mesh_boundaries, apply_boundary_conditions, enforce_numerical_stability, ureg
 
 class TestBoundaryConditionIntegration(unittest.TestCase):
 
+    # Correct order for patching setUp: mock_open_file comes first after self
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('builtins.open', mock.mock_open(read_data='{}')) # Mock open initially
-    def setUp(self, mock_exists, mock_open):
+    def setUp(self, mock_exists, mock_open_file): # mock_exists is now the second argument
         """Set up mock input data and common mock objects for boundary condition validation."""
 
         # Mock input data structure that matches the expected JSON structure
         self.mock_fluid_input_data = {
-            "fluid_velocity": 2.5, # Used for CFL check
+            "fluid_velocity": 2.5,
             "static_pressure": 101325,
             "temperature": 298,
             "density": 1000,
@@ -24,7 +25,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
             "simulation_settings": {
                 "flow_type": "transient",
                 "time_integration_method": "implicit",
-                "suggested_time_step": 0.001, # Required for apply_boundary_conditions
+                "suggested_time_step": 0.001,
                 "CFL_condition": "adaptive",
                 "turbulence_model": "RANS_k-epsilon",
                 "pressure_velocity_coupling": "SIMPLE",
@@ -41,7 +42,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
                 },
                 "outlet_boundary": {
                     "type": "velocity_outlet",
-                    "velocity": None # Can be null
+                    "velocity": None
                 },
                 "wall_boundary": {
                     "no_slip": True,
@@ -54,10 +55,9 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
             }
         }
         # Reset mock_open to provide the actual JSON data for tests that call load_input_file
-        mock_open.return_value.__enter__.return_value.read.return_value = json.dumps(self.mock_fluid_input_data)
+        mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.mock_fluid_input_data)
 
         # Mock mesh data for trimesh.load
-        # A simple box-like mesh to simulate min/max X/Y/Z for testing boundary detection
         self.mock_mesh_data_x_axis = mock.Mock()
         self.mock_mesh_data_x_axis.vertices = np.array([
             [0, 0, 0], [0, 1, 0], [0, 0, 1], # Inlet faces (min X)
@@ -75,8 +75,6 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
             [6, 7, 8], [9, 10, 11], [12, 13, 14], [15, 16, 17], # Walls
             [18, 19, 20] # Another inlet face to ensure multiple are found
         ])
-        # Actual count of faces is 7 based on this simple mock, but the logic iterates over self.mock_mesh_data_x_axis.faces
-        # The exact values in faces don't matter, just their count for `len(mesh.faces)`
 
         self.mock_mesh_data_y_axis = mock.Mock()
         self.mock_mesh_data_y_axis.vertices = np.array([
@@ -104,7 +102,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
 
     @mock.patch('trimesh.load')
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('builtins.open', new_callable=mock.mock_open) # Ensure mock_open can be updated
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
     def test_apply_boundary_conditions_success(self, mock_open_file, mock_exists, mock_trimesh_load):
         """
         Tests that apply_boundary_conditions runs successfully and produces
@@ -112,7 +110,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         """
         # Configure mock_open_file to return the mock input data
         mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.mock_fluid_input_data)
-        
+
         # Configure trimesh.load to return the mock mesh data
         mock_trimesh_load.return_value = self.mock_mesh_data_x_axis
 
@@ -147,11 +145,15 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
 
     @mock.patch('trimesh.load')
     @mock.patch('os.path.exists', return_value=True)
-    def test_parse_mesh_boundaries_picks_correct_axis(self, mock_exists, mock_trimesh_load):
+    @mock.patch('builtins.open', new_callable=mock.mock_open) # Need to mock open for load_input_file in this test
+    def test_parse_mesh_boundaries_picks_correct_axis(self, mock_open_file, mock_exists, mock_trimesh_load):
         """
         Tests that parse_mesh_boundaries correctly identifies boundaries
         on the X, Y, or Z axis based on which one has distinct inlet/outlet.
         """
+        # Configure mock_open_file to return the mock input data for load_input_file
+        mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(self.mock_fluid_input_data)
+
         # Test X-axis preferred
         mock_trimesh_load.return_value = self.mock_mesh_data_x_axis
         inlet, outlet, wall = parse_mesh_boundaries("mock_mesh.obj")
@@ -180,17 +182,19 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         self.assertEqual(len(inlet) + len(outlet) + len(wall), len(self.mock_mesh_data_z_axis.faces))
 
 
+    # These tests don't need the full setUp mocking since they only call enforce_numerical_stability
+    # which only needs the input_data (dict) and dx, dt (pint quantities)
     def test_enforce_numerical_stability_passes(self):
         """Validate CFL condition passes for stable parameters."""
         input_data = {"fluid_velocity": 0.5} # Low velocity, should pass
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
-        
+
         # Should not raise an error
         try:
             enforce_numerical_stability(input_data, dx, dt)
         except ValueError:
-            self.fail("enforce_numerical_stability raised ValueError unexpectedly for stable parameters.")
+            self.fail("enforce_numerical_stability raised ValueError unexpectedly for stable parameters!")
 
     def test_enforce_numerical_stability_fails_cfl(self):
         """Validate CFL condition fails for unstable parameters."""
@@ -198,6 +202,7 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
 
+        # Use a regex that matches the core message, ignoring the prefix
         with self.assertRaisesRegex(ValueError, "CFL condition violated"):
             enforce_numerical_stability(input_data, dx, dt)
 
@@ -206,23 +211,12 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         input_data = {"some_other_key": 100} # fluid_velocity is missing
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
-        
+
         # Should not raise an error and should log a warning (which we don't assert here)
         try:
             enforce_numerical_stability(input_data, dx, dt)
         except Exception as e:
             self.fail(f"enforce_numerical_stability raised an unexpected exception: {e}")
-
-    @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('builtins.open', new_callable=mock.mock_open)
-    def test_load_input_file_missing_fluid_property(self, mock_open_file, mock_exists):
-        """Tests error handling for missing required fluid properties."""
-        malformed_input = self.mock_fluid_input_data.copy()
-        del malformed_input["density"] # Remove a required property
-        mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(malformed_input)
-
-        with self.assertRaisesRegex(ValueError, "Required fluid property 'density' not found"):
-            load_input_file("mock_input.json")
 
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('builtins.open', new_callable=mock.mock_open)
@@ -235,15 +229,27 @@ class TestBoundaryConditionIntegration(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "'boundary_properties_config' section is missing or malformed"):
             load_input_file("mock_input.json")
 
+    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
+    def test_load_input_file_missing_fluid_property(self, mock_open_file, mock_exists):
+        """Tests error handling for missing required fluid properties."""
+        malformed_input = self.mock_fluid_input_data.copy()
+        del malformed_input["density"] # Remove a required property
+        mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(malformed_input)
+
+        with self.assertRaisesRegex(ValueError, "Required fluid property 'density' not found"):
+            load_input_file("mock_input.json")
+
     @mock.patch('trimesh.load')
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('builtins.open', new_callable=mock.mock_open)
     def test_apply_boundary_conditions_missing_suggested_time_step(self, mock_open_file, mock_exists, mock_trimesh_load):
         """Tests error handling for missing 'suggested_time_step' in simulation_settings."""
         malformed_input = self.mock_fluid_input_data.copy()
+        malformed_input["simulation_settings"] = malformed_input["simulation_settings"].copy() # Create a copy to modify
         del malformed_input["simulation_settings"]["suggested_time_step"]
         mock_open_file.return_value.__enter__.return_value.read.return_value = json.dumps(malformed_input)
-        
+
         mock_trimesh_load.return_value = self.mock_mesh_data_x_axis # Needs a mock mesh
 
         dx_val = 0.01 * ureg.meter
