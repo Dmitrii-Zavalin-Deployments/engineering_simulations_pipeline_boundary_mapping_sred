@@ -4,6 +4,7 @@ import numpy as np
 from pint import UnitRegistry
 import unittest.mock as mock
 import os # Required for mocking os.path.exists
+import logging # For suppressing INFO/ERROR messages during tests if needed
 
 # Import the actual functions to be unit tested
 from src.boundary_conditions import load_input_file, parse_mesh_boundaries, enforce_numerical_stability, ureg
@@ -169,7 +170,7 @@ class TestMeshBoundaryParsing(unittest.TestCase):
         """Tests that parse_mesh_boundaries correctly identifies boundaries on the X-axis."""
         mock_trimesh_load.return_value = self.mock_mesh_x
         inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries("mock_mesh.obj")
-        
+
         self.assertEqual(len(inlet_faces), 1)
         self.assertIn(0, inlet_faces) # Face 0 is at min X
         self.assertEqual(len(outlet_faces), 1)
@@ -183,7 +184,7 @@ class TestMeshBoundaryParsing(unittest.TestCase):
         """Tests that parse_mesh_boundaries correctly identifies boundaries on the Y-axis."""
         mock_trimesh_load.return_value = self.mock_mesh_y
         inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries("mock_mesh.obj")
-        
+
         self.assertEqual(len(inlet_faces), 1)
         self.assertIn(0, inlet_faces) # Face 0 is at min Y
         self.assertEqual(len(outlet_faces), 1)
@@ -197,7 +198,7 @@ class TestMeshBoundaryParsing(unittest.TestCase):
         """Tests that parse_mesh_boundaries correctly identifies boundaries on the Z-axis."""
         mock_trimesh_load.return_value = self.mock_mesh_z
         inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries("mock_mesh.obj")
-        
+
         self.assertEqual(len(inlet_faces), 1)
         self.assertIn(0, inlet_faces) # Face 0 is at min Z
         self.assertEqual(len(outlet_faces), 1)
@@ -211,7 +212,7 @@ class TestMeshBoundaryParsing(unittest.TestCase):
         """Tests that if no clear inlet/outlet is found, all faces are walls."""
         mock_trimesh_load.return_value = self.mock_mesh_no_io
         inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries("mock_mesh.obj")
-        
+
         self.assertEqual(len(inlet_faces), 0)
         self.assertEqual(len(outlet_faces), 0)
         self.assertEqual(len(wall_faces), len(self.mock_mesh_no_io.faces)) # All faces become walls
@@ -246,7 +247,7 @@ class TestNumericalStability(unittest.TestCase):
         input_data = {"fluid_velocity": 50.0} # This will cause CFL > 1
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
-        with self.assertRaisesRegex(ValueError, "CFL condition violated"):
+        with self.assertRaisesRegex(ValueError, "CFL condition violated"): # Match core message
             enforce_numerical_stability(input_data, dx, dt)
 
     def test_enforce_numerical_stability_skips_without_fluid_velocity(self):
@@ -265,6 +266,7 @@ class TestNumericalStability(unittest.TestCase):
         input_data = {"fluid_velocity": "invalid"}
         dx = 0.01 * ureg.meter
         dt = 0.001 * ureg.second
+        # Match core message
         with self.assertRaisesRegex(ValueError, "'fluid_velocity' in input data must be a numerical value"):
             enforce_numerical_stability(input_data, dx, dt)
 
