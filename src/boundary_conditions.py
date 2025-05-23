@@ -22,98 +22,61 @@ def load_input_file(file_path):
     with open(file_path, 'r') as file:
         input_data = json.load(file)
 
-    # Process input data, applying defaults where necessary for structured fields
-    input_data = process_input_data(input_data)
+    # All required fluid properties must be present
+    required_fluid_properties = ["static_pressure", "temperature", "density", "viscosity"]
+    for prop in required_fluid_properties:
+        if prop not in input_data:
+            logger.error(f"❌ ERROR: Required fluid property '{prop}' not found in input data.")
+            raise ValueError(f"❌ ERROR: Required fluid property '{prop}' not found in input data.")
 
-    # Convert raw input values to Pint quantities for consistent internal handling
-    # These are directly from your fluid_simulation_input.json
-    if "static_pressure" in input_data:
-        input_data["static_pressure"] *= ureg.pascal
-    if "density" in input_data:
-        input_data["density"] *= ureg.kilogram / ureg.meter**3
-    if "viscosity" in input_data:
-        input_data["viscosity"] *= ureg.pascal * ureg.second
+    input_data["static_pressure"] *= ureg.pascal
+    input_data["density"] *= ureg.kilogram / ureg.meter**3
+    input_data["viscosity"] *= ureg.pascal * ureg.second
+    input_data["temperature"] *= ureg.kelvin
 
-    # Temperature is explicitly in your fluid_simulation_input.json, so no default needed here
-    # (It will be converted to Pint Quantity if present, which it is in your input)
-    if "temperature" in input_data:
-        input_data["temperature"] *= ureg.kelvin
-    else:
-        # Fallback for safety, though your input has it
-        input_data["temperature"] = 298 * ureg.kelvin
-        logger.warning("⚠️ 'temperature' not found in input data. Defaulting to 298 K (safety fallback).")
+    # Ensure simulation_settings exist, it can be empty but must be a dict
+    if "simulation_settings" not in input_data or not isinstance(input_data["simulation_settings"], dict):
+        logger.error("❌ ERROR: 'simulation_settings' section is missing or malformed in the input file. It must be a dictionary.")
+        raise ValueError("❌ ERROR: 'simulation_settings' section is missing or malformed in the input file.")
 
+    # Ensure boundary_conditions_input exist and are structured
+    if "boundary_conditions_input" not in input_data or not isinstance(input_data["boundary_conditions_input"], dict):
+        logger.error("❌ ERROR: 'boundary_conditions_input' section is missing or malformed in the input file. This is now required and must be a dictionary.")
+        raise ValueError("❌ ERROR: 'boundary_conditions_input' section is missing or malformed in the input file.")
 
     logger.info("Input data loaded and units processed.")
     return input_data
 
-# Validate and process input data, ensuring simulation settings exist and have defaults
-def process_input_data(input_data):
-    """Validates required fields and ensures defaults where necessary,
-       especially for simulation_settings."""
-
-    # Ensure simulation_settings exist and apply defaults for its sub-fields
-    if "simulation_settings" not in input_data:
-        input_data["simulation_settings"] = {}
-        logger.warning("⚠️ 'simulation_settings' not found in input data. Adding empty dict.")
-
-    default_simulation_settings = {
-        "flow_type": "transient",
-        "time_integration_method": "implicit",
-        "suggested_time_step": 0.001,
-        "CFL_condition": "adaptive",
-        "turbulence_model": "RANS_k-epsilon",
-        "pressure_velocity_coupling": "SIMPLE",
-        "spatial_discretization": "second_order",
-        "flux_scheme": "upwind",
-        "mesh_type": "unstructured",
-        "cell_storage_format": "cell-centered",
-        "residual_tolerance": 1e-6,
-        "max_iterations": 5000
-    }
-
-    # Apply defaults for any missing simulation settings
-    for key, value in default_simulation_settings.items():
-        if key not in input_data["simulation_settings"]:
-            input_data["simulation_settings"][key] = value
-            logger.warning(f"⚠️ Missing '{key}' in simulation_settings. Defaulting to: {value}")
-
-    # No default for 'fluid_velocity' is added at the top level here,
-    # as it's specifically 'null' for the outlet boundary in the output.
-
-    return input_data
-
-# Function to parse mesh boundaries (Placeholder for actual OBJ parsing)
-def parse_mesh_boundaries(mesh_file_path):
+def parse_mesh_boundaries(input_data):
     """
-    Placeholder function for parsing the mesh file (e.g., .obj)
-    to identify and return lists of face IDs for inlets, outlets, and walls.
-    In a real application, this would involve reading the OBJ file and
-    applying logic (e.g., based on face normals, vertex coordinates,
-    or group tags in the OBJ) to categorize faces.
-    For this specific request, it uses your hardcoded lists.
+    Function to retrieve boundary face IDs from the input_data.
+    All face IDs must be explicitly provided in the input JSON.
     """
-    logger.info(f"Attempting to parse mesh file: {mesh_file_path} to determine boundary faces.")
-    # --- START OF HARDCODED FACE IDS (REPLACE WITH ACTUAL PARSING LOGIC) ---
-    # This section needs to be replaced with logic that reads simulation_mesh.obj
-    # and identifies faces based on some criteria (e.g., coordinates, groups).
-    inlet_faces = [308, 310, 311, 312, 313, 314, 315]
-    outlet_faces = [97, 100, 101, 102, 103, 104, 105, 106, 107]
-    wall_faces = list(range(21)) # Corresponds to your desired output's wall faces
-    # --- END OF HARDCODED FACE IDS ---
+    logger.info("Retrieving mesh boundary faces from input data.")
 
-    logger.info("Mesh boundary faces identified (using hardcoded values from your requirement for demonstration).")
+    bc_input = input_data["boundary_conditions_input"]
+
+    required_face_lists = ["inlet_faces", "outlet_faces", "wall_faces"]
+    for face_list_name in required_face_lists:
+        if face_list_name not in bc_input or not isinstance(bc_input[face_list_name], list):
+            logger.error(f"❌ ERROR: Required face list '{face_list_name}' is missing or not a list under 'boundary_conditions_input' in the input file.")
+            raise ValueError(f"❌ ERROR: Required face list '{face_list_name}' must be provided as a list in the input JSON.")
+
+    inlet_faces = bc_input["inlet_faces"]
+    outlet_faces = bc_input["outlet_faces"]
+    wall_faces = bc_input["wall_faces"]
+
+    logger.info("Mesh boundary faces retrieved from input.")
     return inlet_faces, outlet_faces, wall_faces
 
-# Apply boundary conditions based on input data and desired output structure
-def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
-    """Assigns inlet, outlet, and wall boundary conditions based on input_data,
-       simulation parameters dx, dt, and mesh boundary information."""
+def apply_boundary_conditions(input_data, dx_value, dt_value):
+    """Assigns inlet, outlet, and wall boundary conditions based on input_data
+       and simulation parameters dx, dt."""
 
-    logger.info("Applying boundary conditions...")
+    logger.info("Applying boundary conditions from input data...")
 
-    # Get boundary face IDs from the mesh parsing placeholder
-    inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries(mesh_file_path)
+    # Get boundary face IDs
+    inlet_faces, outlet_faces, wall_faces = parse_mesh_boundaries(input_data)
 
     # Extract magnitudes from Pint quantities for JSON serialization
     inlet_pressure_magnitude = input_data["static_pressure"].to(ureg.pascal).magnitude
@@ -121,16 +84,60 @@ def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
     fluid_density_magnitude = input_data["density"].to(ureg.kilogram / ureg.meter**3).magnitude
     fluid_viscosity_magnitude = input_data["viscosity"].to(ureg.pascal * ureg.second).magnitude
 
-    # Suggested time step from the main function's dt parameter (magnitude only)
-    suggested_time_step_magnitude = dt_value.to(ureg.second).magnitude
+    # Suggested time step is now explicitly retrieved from simulation_settings in input_data
+    simulation_settings = input_data["simulation_settings"] # Already checked to be a dict in load_input_file
+    if "suggested_time_step" not in simulation_settings:
+        logger.error("❌ ERROR: 'suggested_time_step' is missing from 'simulation_settings' in the input file. This is required.")
+        raise ValueError("❌ ERROR: 'suggested_time_step' is required in simulation_settings.")
+    suggested_time_step_magnitude = simulation_settings["suggested_time_step"]
 
-    # Extract simulation settings directly from input_data
-    simulation_settings = input_data.get("simulation_settings", {})
 
+    # Retrieve all boundary type and property information directly from input_data
+    boundary_conditions_input = input_data["boundary_conditions_input"] # Already checked to be a dict
+
+    # Validate required boundary condition sections
+    required_boundaries_sections = ["inlet_boundary", "outlet_boundary", "wall_boundary"]
+    for section_name in required_boundaries_sections:
+        if section_name not in boundary_conditions_input or not isinstance(boundary_conditions_input[section_name], dict):
+            logger.error(f"❌ ERROR: Required boundary section '{section_name}' is missing or malformed (not a dictionary) in 'boundary_conditions_input' in the input file.")
+            raise ValueError(f"❌ ERROR: Required boundary section '{section_name}' must be provided as a dictionary in input.")
+
+    inlet_bc_props = boundary_conditions_input["inlet_boundary"]
+    outlet_bc_props = boundary_conditions_input["outlet_boundary"]
+    wall_bc_props = boundary_conditions_input["wall_boundary"]
+
+    # Validate essential properties within boundary sections
+    if "type" not in inlet_bc_props:
+        logger.error("❌ ERROR: 'type' is missing for 'inlet_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'type' is required for 'inlet_boundary'.")
+    if "type" not in outlet_bc_props:
+        logger.error("❌ ERROR: 'type' is missing for 'outlet_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'type' is required for 'outlet_boundary'.")
+    if "no_slip" not in wall_bc_props:
+        logger.error("❌ ERROR: 'no_slip' is missing for 'wall_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'no_slip' is required for 'wall_boundary'.")
+    if "wall_properties" not in wall_bc_props or not isinstance(wall_bc_props["wall_properties"], dict):
+        logger.error("❌ ERROR: 'wall_properties' is missing or malformed for 'wall_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'wall_properties' is required for 'wall_boundary'.")
+    if "roughness" not in wall_bc_props["wall_properties"]:
+        logger.error("❌ ERROR: 'roughness' is missing for 'wall_properties' in 'wall_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'roughness' is required for 'wall_properties'.")
+    if "heat_transfer" not in wall_bc_props["wall_properties"]:
+        logger.error("❌ ERROR: 'heat_transfer' is missing for 'wall_properties' in 'wall_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'heat_transfer' is required for 'wall_properties'.")
+    if "wall_functions" not in wall_bc_props:
+        logger.error("❌ ERROR: 'wall_functions' is missing for 'wall_boundary' in the input file.")
+        raise ValueError("❌ ERROR: 'wall_functions' is required for 'wall_boundary'.")
+    if "velocity" not in outlet_bc_props: # Check for velocity specifically for outlet
+        logger.error("❌ ERROR: 'velocity' is missing for 'outlet_boundary' in the input file (use null if velocity is unknown/calculated).")
+        raise ValueError("❌ ERROR: 'velocity' is required for 'outlet_boundary' (can be null).")
+
+
+    # Build the final boundary conditions dictionary
     boundary_conditions = {
         "inlet_faces": inlet_faces,
         "inlet_boundary": {
-            "type": "pressure_inlet",
+            "type": inlet_bc_props["type"],
             "pressure": inlet_pressure_magnitude,
             "fluid_properties": {
                 "temperature": fluid_temperature_magnitude,
@@ -140,55 +147,55 @@ def apply_boundary_conditions(input_data, dx_value, dt_value, mesh_file_path):
         },
         "outlet_faces": outlet_faces,
         "outlet_boundary": {
-            "type": "velocity_outlet",
-            "velocity": None # Explicitly setting to null as requested
+            "type": outlet_bc_props["type"],
+            "velocity": outlet_bc_props["velocity"]
         },
         "wall_faces": wall_faces,
         "wall_boundary": {
-            "no_slip": True,
+            "no_slip": wall_bc_props["no_slip"],
             "wall_properties": {
-                "roughness": 0.002, # Default roughness, could be configurable
-                "heat_transfer": False # Default heat transfer, could be configurable
+                "roughness": wall_bc_props["wall_properties"]["roughness"],
+                "heat_transfer": wall_bc_props["wall_properties"]["heat_transfer"]
             },
-            "wall_functions": "standard" # Added as per desired output
+            "wall_functions": wall_bc_props["wall_functions"]
         },
-        "simulation_settings": {
-            "flow_type": simulation_settings.get("flow_type"),
-            "time_integration_method": simulation_settings.get("time_integration_method"),
-            "suggested_time_step": suggested_time_step_magnitude,
-            "CFL_condition": simulation_settings.get("CFL_condition"),
-            "turbulence_model": simulation_settings.get("turbulence_model"),
-            "pressure_velocity_coupling": simulation_settings.get("pressure_velocity_coupling"),
-            "spatial_discretization": simulation_settings.get("spatial_discretization"),
-            "flux_scheme": simulation_settings.get("flux_scheme"),
-            "mesh_type": simulation_settings.get("mesh_type"),
-            "cell_storage_format": simulation_settings.get("cell-centered"),
-            "residual_tolerance": simulation_settings.get("residual_tolerance"),
-            "max_iterations": simulation_settings.get("max_iterations")
-        }
+        "simulation_settings": simulation_settings # This will include only what's in the input
     }
-    logger.info("Boundary conditions structured successfully.")
+
+    # Ensure cell_storage_format is directly taken from simulation_settings if present
+    # No more typo, and no default if missing
+    if "cell_storage_format" not in simulation_settings:
+        logger.warning("⚠️ 'cell_storage_format' not found in simulation_settings. It will be omitted from the output.")
+    # The entire simulation_settings dict is assigned, so individual keys are handled.
+
+    logger.info("Boundary conditions structured successfully from input data.")
     return boundary_conditions
 
-# Ensure numerical stability via CFL condition
-def enforce_numerical_stability(dx, dt):
-    """Checks CFL condition for numerical stability.
-       Since fluid_velocity is not a direct input and outlet is null,
-       a characteristic velocity is assumed for this check."""
-    logger.warning("⚠️ CFL check is performed using a characteristic velocity (1.0 m/s) as fluid_velocity is not provided directly in input.")
-    # For CFL calculation, we need a characteristic velocity.
-    # If no explicit velocity is provided in the input, a default or estimated value is used.
-    characteristic_velocity_magnitude = 1.0 # m/s for CFL calculation if no velocity is specified
-    
+def enforce_numerical_stability(input_data, dx, dt):
+    """
+    Checks CFL condition for numerical stability. Requires 'fluid_velocity'
+    to be explicitly provided in the input data for this check.
+    If 'fluid_velocity' is not present, the check is skipped and a warning is logged.
+    """
+    if "fluid_velocity" not in input_data:
+        logger.warning("⚠️ Skipping CFL check: 'fluid_velocity' not found in input data. Cannot calculate CFL.")
+        return # Skip the check if velocity isn't provided
+
+    if not isinstance(input_data["fluid_velocity"], (int, float)):
+        logger.error("❌ ERROR: 'fluid_velocity' in input data must be a numerical value.")
+        raise ValueError("❌ ERROR: 'fluid_velocity' must be a numerical value for CFL check.")
+
+    characteristic_velocity_magnitude = input_data["fluid_velocity"] # Assumed to be in m/s directly from input
+    logger.info(f"Performing CFL check using fluid_velocity: {characteristic_velocity_magnitude} m/s.")
+
     cfl_value = characteristic_velocity_magnitude * dt.to(ureg.second).magnitude / dx.to(ureg.meter).magnitude
-    logger.info(f"Calculated CFL value: {cfl_value:.4f} (using characteristic velocity of {characteristic_velocity_magnitude} m/s).")
+    logger.info(f"Calculated CFL value: {cfl_value:.4f}.")
 
     if cfl_value > 1:
         logger.error(f"❌ ERROR: CFL condition violated – CFL = {cfl_value:.4f}. Adjust time-step or grid spacing.")
         raise ValueError(f"❌ ERROR: CFL condition violated – CFL = {cfl_value:.4f}. Adjust time-step or grid spacing.")
     logger.info("CFL condition satisfied.")
 
-# Generate output file based on computed boundary conditions
 def save_output_file(boundary_conditions, output_file_path):
     """Writes computed boundary conditions to output JSON file."""
     # Ensure output directory exists
@@ -203,7 +210,6 @@ def save_output_file(boundary_conditions, output_file_path):
 
     logger.info(f"✅ Boundary conditions saved to: {output_file_path}")
 
-# Main function: Load input, validate, process boundary conditions, enforce stability, and save output
 def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 * ureg.second):
     """Executes boundary condition processing pipeline."""
 
@@ -212,11 +218,11 @@ def main(mesh_file_path, fluid_input_file_path, dx=0.01 * ureg.meter, dt=0.001 *
     # Load input data from fluid_simulation_input.json
     input_data = load_input_file(fluid_input_file_path)
 
-    # Enforce numerical stability (CFL check now uses a characteristic velocity)
-    enforce_numerical_stability(dx, dt)
+    # Enforce numerical stability (CFL check only if fluid_velocity is provided in input)
+    enforce_numerical_stability(input_data, dx, dt)
 
-    # Generate boundary conditions, passing the mesh file path for face identification
-    boundary_conditions = apply_boundary_conditions(input_data, dx, dt, mesh_file_path)
+    # Generate boundary conditions
+    boundary_conditions = apply_boundary_conditions(input_data, dx, dt)
 
     # Construct the output path for boundary_conditions.json
     output_dir = os.path.dirname(fluid_input_file_path)
@@ -237,9 +243,9 @@ if __name__ == "__main__":
         fluid_input_arg_path = sys.argv[2]
         main(mesh_arg_path, fluid_input_arg_path)
     else:
-        logger.info("ℹ️ Running with default local paths for testing.")
+        logger.info("ℹ️ Running with default local paths for testing. Ensure 'fluid_simulation_input.json' exists at the specified path.")
         # Adjust these paths if your local setup differs
-        default_mesh_path = "../downloaded_simulation_files/simulation_mesh.obj"
+        default_mesh_path = "../downloaded_simulation_files/simulation_mesh.obj" # Still a placeholder; actual parsing would go here.
         default_fluid_input_path = "../downloaded_simulation_files/fluid_simulation_input.json"
 
         # Create dummy input directory if it doesn't exist
@@ -248,34 +254,8 @@ if __name__ == "__main__":
             os.makedirs(dummy_input_dir)
             logger.info(f"Created dummy input directory: {dummy_input_dir}")
 
-        # Create dummy fluid_simulation_input.json for local testing if it doesn't exist
-        # This reflects your exact input file, without 'fluid_velocity'
-        dummy_fluid_input_content = {
-            "static_pressure": 101325,
-            "temperature": 298,
-            "density": 1000,
-            "viscosity": 0.001002,
-            "simulation_settings": {
-                "flow_type": "transient",
-                "time_integration_method": "implicit",
-                "suggested_time_step": 0.001,
-                "CFL_condition": "adaptive",
-                "turbulence_model": "RANS_k-epsilon",
-                "pressure_velocity_coupling": "SIMPLE",
-                "spatial_discretization": "second_order",
-                "flux_scheme": "upwind",
-                "mesh_type": "unstructured",
-                "cell_storage_format": "cell-centered",
-                "residual_tolerance": 1e-6,
-                "max_iterations": 5000
-            }
-        }
-        if not os.path.exists(default_fluid_input_path):
-            with open(default_fluid_input_path, 'w') as f:
-                json.dump(dummy_fluid_input_content, f, indent=4)
-            logger.info(f"Created dummy fluid input file for testing: {default_fluid_input_path}")
-
-        # No need to create a dummy mesh file for this script's current functionality
-        # as it doesn't parse it beyond placeholder.
+        # IMPORTANT: This block no longer creates a dummy fluid_simulation_input.json
+        # The user MUST provide it externally at default_fluid_input_path.
+        # If the file is missing or incomplete, the script will raise errors.
 
         main(default_mesh_path, default_fluid_input_path)
