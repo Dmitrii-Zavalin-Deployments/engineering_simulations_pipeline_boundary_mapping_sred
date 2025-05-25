@@ -34,7 +34,7 @@ jobs:
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          REFRESH_TOKEN: ${{ secrets.APP_SECRET }}
         run: src/download_from_dropbox.sh
 
       # ✅ 6️⃣ Verify Downloaded Files Exist (Programmatic Check)
@@ -57,14 +57,14 @@ jobs:
             echo "ℹ️ No previous fluid_simulation_input.json found—proceeding with new generation."
           fi
 
-      # ✅ 7️⃣ Debug Directory Structure Before JSON Merge
-      - name: Debug Directory Structure Before JSON Merge
+      # ✅ 7️⃣ Debug Entire Directory Structure Before JSON Merge
+      - name: Debug Entire Directory Structure Before JSON Merge
         run: ls -R $GITHUB_WORKSPACE
 
       # ✅ 8️⃣ Run JSON Merge Script
       - name: Merge JSON Files
         working-directory: ./src
-        run: python merge_json_files.py $GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
+        run: python src/merge_json_files.py $GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
 
       # ✅ Debug: List Directory Before Verifying Output Files
       - name: Debug Directory Structure Before Verification
@@ -94,5 +94,5 @@ jobs:
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          REFRESH_TOKEN: ${{ secrets.APP_SECRET }}
         run: src/upload_to_dropbox.sh
