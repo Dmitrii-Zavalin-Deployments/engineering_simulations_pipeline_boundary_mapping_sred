@@ -3,7 +3,7 @@ import json
 def merge_json_files(mesh_file, initial_file, output_file):
     """Merge mesh JSON and initial fluid simulation JSON into a correctly formatted JSON file."""
 
-    # Load simulation mesh data
+    # Load mesh data
     with open(mesh_file, 'r') as f:
         mesh_data = json.load(f)
 
@@ -26,7 +26,7 @@ def merge_json_files(mesh_file, initial_file, output_file):
     print(f"✅ Merged JSON saved to {output_file}")
 
 # Example usage
-merge_json_files("simulation_mesh.json", "initial_data.json", "fluid_simulation_input.json")
+merge_json_files("mesh_data.json", "initial_data.json", "fluid_simulation_input.json")
 
 
 
