@@ -40,8 +40,8 @@ jobs:
       # ✅ 6️⃣ Verify Downloaded Files Exist (Programmatic Check)
       - name: Verify File Existence
         run: |
-          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/simulation_mesh.json ] && [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json ]; then
-            echo "✅ Both simulation_mesh.json and initial_data.json were downloaded successfully."
+          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json ] && [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json ]; then
+            echo "✅ Both mesh_data.json and initial_data.json were downloaded successfully."
           else
             echo "❌ ERROR: One or both of the required files were not found!"
             exit 1
@@ -57,10 +57,14 @@ jobs:
             echo "ℹ️ No previous fluid_simulation_input.json found—proceeding with new generation."
           fi
 
+      # ✅ 7️⃣ Debug Directory Structure Before JSON Merge
+      - name: Debug Directory Structure Before JSON Merge
+        run: ls -R $GITHUB_WORKSPACE/downloaded_simulation_files/
+
       # ✅ 8️⃣ Run JSON Merge Script
       - name: Merge JSON Files
         working-directory: ./src
-        run: python merge_json_files.py $GITHUB_WORKSPACE/downloaded_simulation_files/simulation_mesh.json $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
+        run: python merge_json_files.py $GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
 
       # ✅ Debug: List Directory Before Verifying Output Files
       - name: Debug Directory Structure Before Verification
