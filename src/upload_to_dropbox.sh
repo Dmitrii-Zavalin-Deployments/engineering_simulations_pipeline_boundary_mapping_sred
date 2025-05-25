@@ -5,8 +5,8 @@ APP_KEY="${APP_KEY}"         # Dropbox App Key (Client ID)
 APP_SECRET="${APP_SECRET}"   # Dropbox App Secret (Client Secret)
 REFRESH_TOKEN="${REFRESH_TOKEN}" # Dropbox Refresh Token
 
-# ✅ Fixed: Corrected the local file path
-LOCAL_OUTPUT_FILE_PATH="$GITHUB_WORKSPACE/downloaded_simulation_files/boundary_conditions.json"
+# ✅ Updated: Corrected the local file path for fluid simulation input
+LOCAL_OUTPUT_FILE_PATH="$GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json"
 
 # ✅ Fixed: Changed Dropbox folder path
 DROPBOX_UPLOAD_FOLDER="/engineering_simulations_pipeline"
@@ -28,5 +28,6 @@ else
     echo "❌ ERROR: Failed to upload ${LOCAL_OUTPUT_FILE_PATH} to Dropbox."
     exit 1
 fi
+
 
 
