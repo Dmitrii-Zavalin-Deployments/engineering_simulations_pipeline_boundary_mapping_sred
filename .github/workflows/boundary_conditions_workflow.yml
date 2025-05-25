@@ -59,7 +59,7 @@ jobs:
 
       # ✅ 7️⃣ Debug Directory Structure Before JSON Merge
       - name: Debug Directory Structure Before JSON Merge
-        run: ls -R $GITHUB_WORKSPACE/downloaded_simulation_files/
+        run: ls -R $GITHUB_WORKSPACE
 
       # ✅ 8️⃣ Run JSON Merge Script
       - name: Merge JSON Files
