@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 
 def extract_boundary_faces(mesh_data, boundary_type):
     """Extracts face IDs based on boundary type."""
@@ -11,8 +12,21 @@ def extract_boundary_faces(mesh_data, boundary_type):
         if face.get("type") == boundary_type
     ]
 
+def validate_fluid_structure(merged):
+    """Lightweight structural assertion to catch malformed outputs."""
+    required_blocks = ["mesh", "boundary_conditions", "fluid_properties", "simulation_parameters"]
+    for block in required_blocks:
+        if block not in merged:
+            raise ValueError(f"Missing top-level block: {block}")
+    bc = merged["boundary_conditions"]
+    for side in ["inlet", "outlet", "wall"]:
+        if side not in bc:
+            raise ValueError(f"Missing boundary condition for: {side}")
+    if "velocity" not in bc["inlet"] or "pressure" not in bc["inlet"]:
+        raise ValueError("Inlet must have both velocity and pressure.")
+
 def merge_json_files(mesh_file, initial_file, output_file):
-    """Merge mesh JSON and initial fluid simulation JSON into a correctly formatted JSON file."""
+    """Merge mesh JSON and initial fluid simulation JSON into a structured output file."""
 
     # Get workspace directory (GitHub or local fallback)
     workspace_dir = os.getenv("GITHUB_WORKSPACE", ".")
@@ -22,23 +36,19 @@ def merge_json_files(mesh_file, initial_file, output_file):
     initial_path = os.path.join(workspace_dir, "downloaded_simulation_files", initial_file)
     output_path = os.path.join(workspace_dir, "downloaded_simulation_files", output_file)
 
-    # Load mesh data
+    # Load input files
     with open(mesh_path, 'r') as f:
         mesh_data = json.load(f)
 
-    # Load initial simulation data
     with open(initial_path, 'r') as f:
         fluid_data = json.load(f)
 
-    # Extract boundary face IDs
+    # Extract face IDs by type
     inlet_faces = extract_boundary_faces(mesh_data, "inlet")
     outlet_faces = extract_boundary_faces(mesh_data, "outlet")
     wall_faces = extract_boundary_faces(mesh_data, "wall")
 
-    # Use fluid_properties as-is (already contains thermodynamics if present)
-    fluid_properties = fluid_data.get("fluid_properties", {})
-
-    # Merge files into final structure
+    # Assemble final merged structure
     final_data = {
         "mesh": mesh_data,
         "boundary_conditions": {
@@ -56,17 +66,23 @@ def merge_json_files(mesh_file, initial_file, output_file):
                 "no_slip": fluid_data["boundary_conditions"]["wall"]["no_slip"]
             }
         },
-        "fluid_properties": fluid_properties,
+        "fluid_properties": fluid_data.get("fluid_properties", {}),
         "simulation_parameters": fluid_data.get("simulation_parameters", {})
     }
 
-    # Save merged result
+    # Inline structure check
+    try:
+        validate_fluid_structure(final_data)
+    except ValueError as e:
+        print(f"❌ Structure validation failed: {e}")
+        sys.exit(1)
+
+    # Save result
     with open(output_path, 'w') as f:
         json.dump(final_data, f, indent=4)
 
     print(f"✅ Merged JSON saved to {output_path}")
 
-# Example usage in GitHub Actions or CLI
 if __name__ == "__main__":
     merge_json_files("mesh_data.json", "initial_data.json", "fluid_simulation_input.json")
 
