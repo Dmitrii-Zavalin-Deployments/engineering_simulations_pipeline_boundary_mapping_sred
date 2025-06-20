@@ -29,6 +29,19 @@ def validate_fluid_structure(merged):
         raise ValueError("Inlet must have both velocity and pressure.")
     print("[DEBUG] Structure validation passed.")
 
+def remove_falsey_fields(obj):
+    """Recursively removes keys with falsey values from a dictionary or list."""
+    if isinstance(obj, dict):
+        return {
+            k: remove_falsey_fields(v)
+            for k, v in obj.items()
+            if v or isinstance(v, (int, float))  # Keep numeric 0 values
+        }
+    elif isinstance(obj, list):
+        return [remove_falsey_fields(v) for v in obj if v or isinstance(v, (int, float))]
+    else:
+        return obj
+
 def merge_json_files(mesh_file, initial_file, output_file):
     """Merge mesh JSON and initial fluid simulation JSON into a structured output file."""
 
@@ -50,20 +63,14 @@ def merge_json_files(mesh_file, initial_file, output_file):
     print("[DEBUG] Top-level keys in initial data:", list(fluid_data.keys()))
     if "thermodynamics" in fluid_data:
         print("[DEBUG] ⚠️ Found top-level 'thermodynamics' block!")
+        del fluid_data["thermodynamics"]
 
     inlet_faces = extract_boundary_faces(mesh_data, "inlet")
     outlet_faces = extract_boundary_faces(mesh_data, "outlet")
     wall_faces = extract_boundary_faces(mesh_data, "wall")
 
     fluid_props = fluid_data.get("fluid_properties", {}).copy()
-    print("[DEBUG] Keys in fluid_properties before patch:", list(fluid_props.keys()))
-
-    thermo_top = fluid_data.get("thermodynamics")
-    if thermo_top and "thermodynamics" not in fluid_props:
-        fluid_props["thermodynamics"] = thermo_top
-        print("[DEBUG] Injected top-level 'thermodynamics' into fluid_properties.")
-
-    print("[DEBUG] Final fluid_properties keys:", list(fluid_props.keys()))
+    print("[DEBUG] Keys in fluid_properties before cleanup:", list(fluid_props.keys()))
 
     final_data = {
         "mesh": mesh_data,
@@ -88,6 +95,9 @@ def merge_json_files(mesh_file, initial_file, output_file):
 
     print("[DEBUG] Assembled final_data keys:", list(final_data.keys()))
     print("[DEBUG] Top-level 'thermodynamics' still present? →", "thermodynamics" in final_data)
+
+    final_data = remove_falsey_fields(final_data)
+    print("[DEBUG] Final data after removing falsey fields")
 
     try:
         validate_fluid_structure(final_data)
