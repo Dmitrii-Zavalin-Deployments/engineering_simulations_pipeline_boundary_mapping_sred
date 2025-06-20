@@ -35,12 +35,20 @@ def remove_falsey_fields(obj):
         return {
             k: remove_falsey_fields(v)
             for k, v in obj.items()
-            if v or isinstance(v, (int, float))  # Keep numeric 0 values
+            if v or isinstance(v, (int, float))  # keep 0, 0.0
         }
     elif isinstance(obj, list):
         return [remove_falsey_fields(v) for v in obj if v or isinstance(v, (int, float))]
     else:
         return obj
+
+def filter_allowed_fields(data, allowed_fields, label=""):
+    """Filter a dictionary to keep only whitelisted fields."""
+    filtered = {k: v for k, v in data.items() if k in allowed_fields}
+    skipped = [k for k in data if k not in allowed_fields]
+    if skipped:
+        print(f"[DEBUG] Skipped keys in {label}: {skipped}")
+    return filtered
 
 def merge_json_files(mesh_file, initial_file, output_file):
     """Merge mesh JSON and initial fluid simulation JSON into a structured output file."""
@@ -62,15 +70,34 @@ def merge_json_files(mesh_file, initial_file, output_file):
 
     print("[DEBUG] Top-level keys in initial data:", list(fluid_data.keys()))
     if "thermodynamics" in fluid_data:
-        print("[DEBUG] ⚠️ Found top-level 'thermodynamics' block!")
+        print("[DEBUG] ⚠️ Found top-level 'thermodynamics' block — removing it")
         del fluid_data["thermodynamics"]
 
     inlet_faces = extract_boundary_faces(mesh_data, "inlet")
     outlet_faces = extract_boundary_faces(mesh_data, "outlet")
     wall_faces = extract_boundary_faces(mesh_data, "wall")
 
-    fluid_props = fluid_data.get("fluid_properties", {}).copy()
-    print("[DEBUG] Keys in fluid_properties before cleanup:", list(fluid_props.keys()))
+    raw_fluid_props = fluid_data.get("fluid_properties", {})
+    print("[DEBUG] Raw fluid_properties keys:", list(raw_fluid_props.keys()))
+
+    # Drop 'thermodynamics' if marked as incompressible or contextually unnecessary
+    if (
+        isinstance(raw_fluid_props.get("thermodynamics"), dict)
+        and raw_fluid_props["thermodynamics"].get("model") == "incompressible"
+    ):
+        print("[DEBUG] Removing 'thermodynamics' due to incompressible model")
+        del raw_fluid_props["thermodynamics"]
+
+    # Keep only approved keys
+    fluid_props = filter_allowed_fields(
+        raw_fluid_props, {"density", "viscosity", "thermodynamics"}, label="fluid_properties"
+    )
+
+    sim_params = filter_allowed_fields(
+        fluid_data.get("simulation_parameters", {}),
+        {"time_step", "total_time", "solver"},
+        label="simulation_parameters"
+    )
 
     final_data = {
         "mesh": mesh_data,
@@ -90,14 +117,11 @@ def merge_json_files(mesh_file, initial_file, output_file):
             }
         },
         "fluid_properties": fluid_props,
-        "simulation_parameters": fluid_data.get("simulation_parameters", {})
+        "simulation_parameters": sim_params
     }
 
     print("[DEBUG] Assembled final_data keys:", list(final_data.keys()))
-    print("[DEBUG] Top-level 'thermodynamics' still present? →", "thermodynamics" in final_data)
-
     final_data = remove_falsey_fields(final_data)
-    print("[DEBUG] Final data after removing falsey fields")
 
     try:
         validate_fluid_structure(final_data)
