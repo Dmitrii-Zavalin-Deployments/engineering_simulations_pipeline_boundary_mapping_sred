@@ -1,3 +1,5 @@
+# src/merge_json_files.py
+
 import json
 import os
 
@@ -12,7 +14,7 @@ def extract_boundary_faces(mesh_data, boundary_type):
 def merge_json_files(mesh_file, initial_file, output_file):
     """Merge mesh JSON and initial fluid simulation JSON into a correctly formatted JSON file."""
 
-    # Get workspace directory
+    # Get workspace directory (GitHub or local fallback)
     workspace_dir = os.getenv("GITHUB_WORKSPACE", ".")
 
     # Construct full paths
@@ -28,14 +30,28 @@ def merge_json_files(mesh_file, initial_file, output_file):
     with open(initial_path, 'r') as f:
         fluid_data = json.load(f)
 
-    # Extract boundary face IDs for inlet, outlet, and wall
+    # Extract boundary face IDs
     inlet_faces = extract_boundary_faces(mesh_data, "inlet")
     outlet_faces = extract_boundary_faces(mesh_data, "outlet")
     wall_faces = extract_boundary_faces(mesh_data, "wall")
 
+    # Build merged fluid properties (conditionally include thermodynamics)
+    fluid_props = fluid_data.get("fluid_properties", {})
+    if "thermodynamics" in fluid_props:
+        thermodynamics = fluid_props["thermodynamics"]
+    else:
+        thermodynamics = None
+
+    merged_fluid_properties = {
+        "density": fluid_props.get("density"),
+        "viscosity": fluid_props.get("viscosity")
+    }
+    if thermodynamics:
+        merged_fluid_properties["thermodynamics"] = thermodynamics
+
     # Merge files into final structure
     final_data = {
-        "mesh": mesh_data,  # Use entire first JSON file as the mesh structure
+        "mesh": mesh_data,
         "boundary_conditions": {
             "inlet": {
                 "faces": inlet_faces,
@@ -51,16 +67,19 @@ def merge_json_files(mesh_file, initial_file, output_file):
                 "no_slip": fluid_data["boundary_conditions"]["wall"]["no_slip"]
             }
         },
-        "fluid_properties": fluid_data.get("fluid_properties", {}),  # Fluid properties
-        "simulation_parameters": fluid_data.get("simulation_parameters", {})  # Simulation settings
+        "fluid_properties": merged_fluid_properties,
+        "simulation_parameters": fluid_data.get("simulation_parameters", {})
     }
 
-    # Save merged data
+    # Save merged result
     with open(output_path, 'w') as f:
         json.dump(final_data, f, indent=4)
 
     print(f"✅ Merged JSON saved to {output_path}")
 
-# Example usage in GitHub Actions
+# Example usage in GitHub Actions or CLI
 if __name__ == "__main__":
     merge_json_files("mesh_data.json", "initial_data.json", "fluid_simulation_input.json")
+
+
+
