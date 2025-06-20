@@ -48,6 +48,12 @@ def merge_json_files(mesh_file, initial_file, output_file):
     outlet_faces = extract_boundary_faces(mesh_data, "outlet")
     wall_faces = extract_boundary_faces(mesh_data, "wall")
 
+    # Build merged fluid properties and optionally inject thermodynamics from top level
+    fluid_props = fluid_data.get("fluid_properties", {}).copy()
+    thermo_top = fluid_data.get("thermodynamics")
+    if thermo_top and "thermodynamics" not in fluid_props:
+        fluid_props["thermodynamics"] = thermo_top
+
     # Assemble final merged structure
     final_data = {
         "mesh": mesh_data,
@@ -66,7 +72,7 @@ def merge_json_files(mesh_file, initial_file, output_file):
                 "no_slip": fluid_data["boundary_conditions"]["wall"]["no_slip"]
             }
         },
-        "fluid_properties": fluid_data.get("fluid_properties", {}),
+        "fluid_properties": fluid_props,
         "simulation_parameters": fluid_data.get("simulation_parameters", {})
     }
 
