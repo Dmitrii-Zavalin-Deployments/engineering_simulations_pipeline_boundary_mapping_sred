@@ -6,3 +6,7 @@ pytest
 pint
 dropbox
 trimesh
+hypothesis>=6.0
+
+
+
