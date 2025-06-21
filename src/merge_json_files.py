@@ -4,6 +4,7 @@ import json
 import os
 import sys
 
+
 def extract_boundary_faces(mesh_data, boundary_type):
     """Extracts face IDs based on boundary type."""
     faces = [
@@ -13,6 +14,7 @@ def extract_boundary_faces(mesh_data, boundary_type):
     ]
     print(f"[DEBUG] Extracted {len(faces)} {boundary_type} faces: {faces}")
     return faces
+
 
 def validate_fluid_structure(merged):
     """Lightweight structural assertion to catch malformed outputs."""
@@ -29,18 +31,20 @@ def validate_fluid_structure(merged):
         raise ValueError("Inlet must have both velocity and pressure.")
     print("[DEBUG] Structure validation passed.")
 
+
 def remove_falsey_fields(obj):
     """Recursively removes keys with falsey values from a dictionary or list."""
     if isinstance(obj, dict):
         return {
             k: remove_falsey_fields(v)
             for k, v in obj.items()
-            if v or isinstance(v, (int, float))  # keep 0, 0.0
+            if v or isinstance(v, (int, float))
         }
     elif isinstance(obj, list):
         return [remove_falsey_fields(v) for v in obj if v or isinstance(v, (int, float))]
     else:
         return obj
+
 
 def filter_allowed_fields(data, allowed_fields, label=""):
     """Filter a dictionary to keep only whitelisted fields."""
@@ -50,15 +54,25 @@ def filter_allowed_fields(data, allowed_fields, label=""):
         print(f"[DEBUG] Skipped keys in {label}: {skipped}")
     return filtered
 
+
+def resolve_path(file_arg):
+    """
+    If file_arg is an absolute path or exists relative to the current directory, return it as-is.
+    Otherwise, resolve under the GitHub Actions simulation workspace.
+    """
+    if os.path.isabs(file_arg) or os.path.exists(file_arg):
+        return file_arg
+
+    workspace_dir = os.getenv("GITHUB_WORKSPACE", ".")
+    return os.path.join(workspace_dir, "downloaded_simulation_files", file_arg)
+
+
 def merge_json_files(mesh_file, initial_file, output_file):
     """Merge mesh JSON and initial fluid simulation JSON into a structured output file."""
 
-    workspace_dir = os.getenv("GITHUB_WORKSPACE", ".")
-    print(f"[DEBUG] Workspace directory: {workspace_dir}")
-
-    mesh_path = os.path.join(workspace_dir, "downloaded_simulation_files", mesh_file)
-    initial_path = os.path.join(workspace_dir, "downloaded_simulation_files", initial_file)
-    output_path = os.path.join(workspace_dir, "downloaded_simulation_files", output_file)
+    mesh_path = resolve_path(mesh_file)
+    initial_path = resolve_path(initial_file)
+    output_path = resolve_path(output_file)
 
     print(f"[DEBUG] Loading mesh from: {mesh_path}")
     with open(mesh_path, 'r') as f:
@@ -80,7 +94,6 @@ def merge_json_files(mesh_file, initial_file, output_file):
     raw_fluid_props = fluid_data.get("fluid_properties", {})
     print("[DEBUG] Raw fluid_properties keys:", list(raw_fluid_props.keys()))
 
-    # Drop 'thermodynamics' if marked as incompressible or contextually unnecessary
     if (
         isinstance(raw_fluid_props.get("thermodynamics"), dict)
         and raw_fluid_props["thermodynamics"].get("model") == "incompressible"
@@ -88,7 +101,6 @@ def merge_json_files(mesh_file, initial_file, output_file):
         print("[DEBUG] Removing 'thermodynamics' due to incompressible model")
         del raw_fluid_props["thermodynamics"]
 
-    # Keep only approved keys
     fluid_props = filter_allowed_fields(
         raw_fluid_props, {"density", "viscosity", "thermodynamics"}, label="fluid_properties"
     )
@@ -134,8 +146,17 @@ def merge_json_files(mesh_file, initial_file, output_file):
 
     print(f"✅ Merged JSON saved to {output_path}")
 
+
 if __name__ == "__main__":
-    merge_json_files("mesh_data.json", "initial_data.json", "fluid_simulation_input.json")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Merge mesh and fluid simulation input files.")
+    parser.add_argument("--mesh", required=True, help="Path to the mesh JSON file")
+    parser.add_argument("--initial", required=True, help="Path to the initial input JSON file")
+    parser.add_argument("--output", required=True, help="Path to write the merged output JSON")
+    args = parser.parse_args()
+
+    merge_json_files(args.mesh, args.initial, args.output)
 
 
 
