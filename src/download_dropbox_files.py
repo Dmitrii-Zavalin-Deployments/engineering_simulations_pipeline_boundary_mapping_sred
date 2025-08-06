@@ -3,6 +3,9 @@ import os
 import requests
 import sys
 
+# Allowed extensions to download
+ALLOWED_EXTENSIONS = [".step", ".stp", ".json", ".zip"]
+
 # Function to refresh the access token
 def refresh_access_token(refresh_token, client_id, client_secret):
     url = "https://api.dropbox.com/oauth2/token"
@@ -16,73 +19,82 @@ def refresh_access_token(refresh_token, client_id, client_secret):
     if response.status_code == 200:
         return response.json()["access_token"]
     else:
-        raise Exception("Failed to refresh access token")
+        raise Exception("❌ Failed to refresh access token")
 
 # Function to delete a file from Dropbox
 def delete_file_from_dropbox(dbx, file_path, log_file):
     try:
         dbx.files_delete_v2(file_path)
         log_file.write(f"Deleted file from Dropbox: {file_path}\n")
-        print(f"Deleted file from Dropbox: {file_path}")  # Print to GitHub Actions logs
+        print(f"🗑️ Deleted file from Dropbox: {file_path}")
     except Exception as e:
         log_file.write(f"Failed to delete file: {file_path}, error: {e}\n")
-        print(f"Failed to delete file: {file_path}, error: {e}")  # Print error to GitHub Actions logs
+        print(f"⚠️ Failed to delete file: {file_path}, error: {e}")
 
-# Function to download all files from a specified Dropbox folder and delete them afterwards
+# Function to download filtered files and optionally delete them afterwards
 def download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path):
-    # Refresh the access token
     access_token = refresh_access_token(refresh_token, client_id, client_secret)
     dbx = dropbox.Dropbox(access_token)
 
     with open(log_file_path, "a") as log_file:
-        log_file.write("Starting download process...\n")
+        log_file.write("🚀 Starting download process...\n")
         try:
             os.makedirs(local_folder, exist_ok=True)
 
-            # Handle pagination
             has_more = True
             cursor = None
             while has_more:
-                if cursor:
-                    result = dbx.files_list_folder_continue(cursor)
-                else:
-                    result = dbx.files_list_folder(dropbox_folder)
-                log_file.write(f"Listing files in Dropbox folder: {dropbox_folder}\n")
+                result = (
+                    dbx.files_list_folder_continue(cursor)
+                    if cursor else
+                    dbx.files_list_folder(dropbox_folder)
+                )
+                log_file.write(f"📁 Listing files in: {dropbox_folder}\n")
 
                 for entry in result.entries:
-                    if isinstance(entry, dropbox.files.FileMetadata):  # Now downloads all files, not just PDFs
-                        local_path = os.path.join(local_folder, entry.name)
-                        with open(local_path, "wb") as f:
-                            metadata, res = dbx.files_download(path=entry.path_lower)
-                            f.write(res.content)
-                        log_file.write(f"Downloaded {entry.name} to {local_path}\n")
-                        print(entry.name)  # Print the name of the downloaded file to GitHub Actions logs
-
-                        # Delete the file from Dropbox after downloading
-                        # delete_file_from_dropbox(dbx, entry.path_lower, log_file)
+                    if isinstance(entry, dropbox.files.FileMetadata):
+                        ext = os.path.splitext(entry.name)[1].lower()
+                        if ext in ALLOWED_EXTENSIONS:
+                            local_path = os.path.join(local_folder, entry.name)
+                            with open(local_path, "wb") as f:
+                                metadata, res = dbx.files_download(path=entry.path_lower)
+                                f.write(res.content)
+                            log_file.write(f"✅ Downloaded {entry.name} → {local_path}\n")
+                            print(f"✅ Downloaded: {entry.name}")
+                            # Optionally delete after download:
+                            # delete_file_from_dropbox(dbx, entry.path_lower, log_file)
+                        else:
+                            log_file.write(f"⏭️ Skipped file (unsupported type): {entry.name}\n")
+                            print(f"⏭️ Skipped: {entry.name}")
 
                 has_more = result.has_more
                 cursor = result.cursor
 
-            log_file.write("Download and delete process completed successfully.\n")
+            log_file.write("🎉 Download completed.\n")
         except dropbox.exceptions.ApiError as err:
-            log_file.write(f"Error downloading files: {err}\n")
-            print(f"Error downloading files: {err}")  # Log the error in GitHub Actions
+            log_file.write(f"❌ Dropbox API error: {err}\n")
+            print(f"❌ Dropbox API error: {err}")
         except Exception as e:
-            log_file.write(f"Unexpected error: {e}\n")
-            print(f"Unexpected error: {e}")  # Log the error in GitHub Actions
+            log_file.write(f"❌ Unexpected error: {e}\n")
+            print(f"❌ Unexpected error: {e}")
 
-# Entry point for the script
+# Entry point
 if __name__ == "__main__":
-    # Read command-line arguments
-    dropbox_folder = sys.argv[1]  # Dropbox folder path
-    local_folder = sys.argv[2]  # Local folder path
-    refresh_token = sys.argv[3]  # Dropbox refresh token
-    client_id = sys.argv[4]  # Dropbox client ID
-    client_secret = sys.argv[5]  # Dropbox client secret
-    log_file_path = sys.argv[6]  # Path to the log file
+    dropbox_folder    = sys.argv[1]
+    local_folder      = sys.argv[2]
+    refresh_token     = sys.argv[3]
+    client_id         = sys.argv[4]
+    client_secret     = sys.argv[5]
+    log_file_path     = sys.argv[6]
 
-    # Call the function
-    download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path)
+    download_files_from_dropbox(
+        dropbox_folder,
+        local_folder,
+        refresh_token,
+        client_id,
+        client_secret,
+        log_file_path
+    )
+
 
 

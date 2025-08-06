@@ -1,12 +1,10 @@
-pyvista
-numpy
-meshio
-jsonschema
-pytest
-pint
-dropbox
-trimesh
-hypothesis>=6.0
+numpy>=1.24.0
+dropbox>=11.36.2
+hypothesis>=6.98.0
+pytest>=7.4.0
+jsonschema>=4.0.0
+PyYAML>=6.0.1
+gmsh==4.11.1
 
 
 

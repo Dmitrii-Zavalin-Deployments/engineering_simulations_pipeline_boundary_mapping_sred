@@ -5,7 +5,7 @@ APP_KEY="${APP_KEY}"
 APP_SECRET="${APP_SECRET}"
 REFRESH_TOKEN="${REFRESH_TOKEN}"
 DROPBOX_FOLDER="/engineering_simulations_pipeline"  # Set Dropbox folder path
-LOCAL_FOLDER="./downloaded_simulation_files"  # Set local folder for downloaded files
+LOCAL_FOLDER="./data/testing-input-output"  # Set local folder for downloaded files
 LOG_FILE="./dropbox_download_log.txt"
 
 # Create the local folder if it doesn't exist
@@ -21,6 +21,5 @@ else
     echo "❌ ERROR: No files were downloaded from Dropbox. Check your credentials and folder path."
     exit 1
 fi
-
 
 

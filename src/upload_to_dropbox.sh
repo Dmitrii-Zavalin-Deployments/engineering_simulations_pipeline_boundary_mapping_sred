@@ -1,33 +1,41 @@
 #!/bin/bash
 
-# Set environment variables from GitHub Actions secrets
-APP_KEY="${APP_KEY}"         # Dropbox App Key (Client ID)
-APP_SECRET="${APP_SECRET}"   # Dropbox App Secret (Client Secret)
-REFRESH_TOKEN="${REFRESH_TOKEN}" # Dropbox Refresh Token
-
-# ✅ Updated: Corrected the local file path for fluid simulation input
-LOCAL_OUTPUT_FILE_PATH="$GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json"
-
-# ✅ Fixed: Changed Dropbox folder path
+APP_KEY="${APP_KEY}"
+APP_SECRET="${APP_SECRET}"
+REFRESH_TOKEN="${REFRESH_TOKEN}"
 DROPBOX_UPLOAD_FOLDER="/engineering_simulations_pipeline"
 
-echo "🔄 Attempting to upload ${LOCAL_OUTPUT_FILE_PATH} to Dropbox folder ${DROPBOX_UPLOAD_FOLDER}..."
+LOCAL_OUTPUT_DIR="$GITHUB_WORKSPACE/data/testing-input-output"
 
-# ✅ Fixed: Changed Python script name to `upload_to_dropbox.py`
-python3 src/upload_to_dropbox.py \
-    "$LOCAL_OUTPUT_FILE_PATH" \
-    "$DROPBOX_UPLOAD_FOLDER" \
-    "$REFRESH_TOKEN" \
-    "$APP_KEY" \
-    "$APP_SECRET"
+echo "🔄 Attempting to upload files from ${LOCAL_OUTPUT_DIR} to Dropbox folder ${DROPBOX_UPLOAD_FOLDER}..."
 
-# Verify the upload (by checking the exit code of the Python script)
-if [ $? -eq 0 ]; then
-    echo "✅ Successfully uploaded ${LOCAL_OUTPUT_FILE_PATH} to Dropbox."
-else
-    echo "❌ ERROR: Failed to upload ${LOCAL_OUTPUT_FILE_PATH} to Dropbox."
+# Ensure the directory exists
+if [ ! -d "$LOCAL_OUTPUT_DIR" ]; then
+    echo "❌ ERROR: Directory $LOCAL_OUTPUT_DIR does not exist."
     exit 1
 fi
+
+# Loop through all files in the directory
+for file in "$LOCAL_OUTPUT_DIR"/*; do
+    if [ -f "$file" ]; then
+        echo "📤 Uploading $file..."
+        python3 src/upload_to_dropbox.py \
+            "$file" \
+            "$DROPBOX_UPLOAD_FOLDER" \
+            "$REFRESH_TOKEN" \
+            "$APP_KEY" \
+            "$APP_SECRET"
+
+        if [ $? -eq 0 ]; then
+            echo "✅ Successfully uploaded $file to Dropbox."
+        else
+            echo "❌ ERROR: Failed to upload $file to Dropbox."
+            exit 1
+        fi
+    fi
+done
+
+echo "🎉 All files uploaded successfully!"
 
 
 

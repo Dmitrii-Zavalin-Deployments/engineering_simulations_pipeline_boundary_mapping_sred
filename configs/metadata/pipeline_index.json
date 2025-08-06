@@ -1,0 +1,46 @@
+{
+  "metadata_tags": {
+    "domain_size": {
+      "type": "computed",
+      "formula": "nx * ny * nz",
+      "description": "Total number of grid elements in the domain"
+    },
+    "spacing_hint": {
+      "type": "derived",
+      "formula": "domain_size / (nx + ny + nz)",
+      "description": "Approximate average spacing across dimensions"
+    },
+    "resolution_density": {
+      "type": "ratio",
+      "formula": "domain_size / bounding_volume",
+      "dependencies": ["bounding_volume"],
+      "description": "Grid density normalized by physical volume"
+    }
+  },
+  "dependencies": {
+    "nx": {
+      "type": "integer",
+      "description": "Number of grid points in x-direction"
+    },
+    "ny": {
+      "type": "integer",
+      "description": "Number of grid points in y-direction"
+    },
+    "nz": {
+      "type": "integer",
+      "description": "Number of grid points in z-direction"
+    },
+    "bounding_volume": {
+      "type": "float",
+      "unit": "m^3",
+      "optional": true,
+      "description": "Physical volume of domain (if known)"
+    }
+  },
+  "tagging_enabled": true,
+  "tracking_mode": "strategic",
+  "execution_scope": "diagnostics, analytics"
+}
+
+
+

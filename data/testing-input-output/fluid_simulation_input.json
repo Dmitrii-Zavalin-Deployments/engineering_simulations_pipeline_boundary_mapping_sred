@@ -1,8 +1,0 @@
-{
-  "fluid_velocity": 2.5,
-  "velocity_direction": 45,
-  "static_pressure": 101325,
-  "temperature": 298,
-  "density": 1000,
-  "viscosity": 0.001002
-}

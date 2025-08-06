@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yourdomain.org/schemas/domain_schema.json",
+  "title": "Domain Definition Schema",
+  "description": "Schema for validating spatial domain extents and resolution values in simulation pipelines.",
+  "type": "object",
+  "required": ["domain_definition"],
+  "properties": {
+    "domain_definition": {
+      "type": "object",
+      "required": [
+        "min_x", "max_x",
+        "min_y", "max_y",
+        "min_z", "max_z",
+        "nx", "ny", "nz"
+      ],
+      "properties": {
+        "min_x": {
+          "type": "number",
+          "description": "Minimum bound in x-direction"
+        },
+        "max_x": {
+          "type": "number",
+          "description": "Maximum bound in x-direction",
+          "minimum": 0.0
+        },
+        "min_y": {
+          "type": "number",
+          "description": "Minimum bound in y-direction"
+        },
+        "max_y": {
+          "type": "number",
+          "description": "Maximum bound in y-direction",
+          "minimum": 0.0
+        },
+        "min_z": {
+          "type": "number",
+          "description": "Minimum bound in z-direction"
+        },
+        "max_z": {
+          "type": "number",
+          "description": "Maximum bound in z-direction. Must be ≥ min_z; enforced in application logic",
+          "minimum": 0.0
+        },
+        "nx": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Grid resolution in x-direction"
+        },
+        "ny": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Grid resolution in y-direction"
+        },
+        "nz": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Grid resolution in z-direction"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
