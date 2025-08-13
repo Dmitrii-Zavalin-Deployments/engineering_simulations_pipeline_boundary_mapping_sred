@@ -106,7 +106,7 @@ jobs:
           python3 src/gmsh_runner.py \
             --step data/testing-input-output/input.step \
             --resolution 0.01 \
-            --output data/testing-input-output/enriched_metadata.json
+            --output data/testing-input-output/boundary_conditions_gmsh.json
 
       - name: 🔍 Validate output JSON against schema
         run: |
