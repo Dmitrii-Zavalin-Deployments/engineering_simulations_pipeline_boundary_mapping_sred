@@ -17,7 +17,6 @@ from src.utils.gmsh_input_check import validate_step_has_volumes
 from src.utils.input_validation import load_resolution_profile
 from src.bbox_classifier import classify_faces
 from src.schema_writer import generate_boundary_block, write_boundary_json
-from src.override_loader import load_override_config, apply_overrides
 
 
 def extract_boundary_conditions_from_step(step_path, resolution=None):
@@ -85,17 +84,6 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         # ✅ Classify face directions
         classified = classify_faces(faces)
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
-
-        # 🧩 Apply overrides if available
-        try:
-            overrides = load_override_config()
-            print(f"[OverrideLoader] Loaded overrides: {overrides}")
-            bc = classified.get("boundary_conditions", {})
-            bc_updated = apply_overrides(bc, overrides)
-            classified["boundary_conditions"] = bc_updated
-            print(f"[OverrideLoader] Applied overrides")
-        except Exception as e:
-            print(f"[OverrideLoader] Skipped due to error: {e}")
 
         # ✅ Generate schema-compliant block
         boundary_block = generate_boundary_block(classified)
