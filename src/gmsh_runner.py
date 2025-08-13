@@ -16,6 +16,8 @@ import numpy as np
 from src.utils.gmsh_input_check import validate_step_has_volumes
 from src.utils.input_validation import load_resolution_profile
 from src.bbox_classifier import classify_faces
+from src.schema_writer import generate_boundary_block, write_boundary_json
+from src.override_loader import load_override_config, apply_overrides
 
 
 def extract_boundary_conditions_from_step(step_path, resolution=None):
@@ -74,27 +76,21 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
                 continue
 
         # ✅ Classify face directions
-        bc_raw = classify_faces(faces)
-        bc = bc_raw.get("boundary_conditions", {})
+        classified = classify_faces(faces)
 
-        # 🧩 Ensure all required boundary condition fields exist
-        boundary_conditions = {
-            "x_min": bc.get("x_min", "none"),
-            "x_max": bc.get("x_max", "none"),
-            "y_min": bc.get("y_min", "none"),
-            "y_max": bc.get("y_max", "none"),
-            "z_min": bc.get("z_min", "none"),
-            "z_max": bc.get("z_max", "none"),
-            "faces": bc.get("faces", []),
-            "type": bc.get("type", "dirichlet"),
-            "apply_faces": bc.get("apply_faces", []),
-            "apply_to": bc.get("apply_to", ["pressure", "velocity"]),
-            "pressure": bc.get("pressure", 0.0),
-            "velocity": bc.get("velocity", [0.0, 0.0, 0.0]),
-            "no_slip": True  # ✅ Enforce physically accurate wall behavior
-        }
+        # 🧩 Apply overrides if available
+        try:
+            overrides = load_override_config()
+            bc = classified.get("boundary_conditions", {})
+            bc_updated = apply_overrides(bc, overrides)
+            classified["boundary_conditions"] = bc_updated
+        except Exception as e:
+            print(f"[Override] Skipped due to error: {e}")
 
-        return boundary_conditions
+        # ✅ Generate schema-compliant block
+        boundary_block = generate_boundary_block(classified)
+
+        return boundary_block
     finally:
         gmsh.finalize()
 
@@ -114,8 +110,7 @@ if __name__ == "__main__":
     print(json.dumps(result, indent=2))
 
     if args.output:
-        with open(args.output, "w") as f:
-            json.dump(result, f, indent=2)
+        write_boundary_json(args.output, result)
 
 
 

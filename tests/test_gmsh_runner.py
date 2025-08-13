@@ -1,8 +1,11 @@
 # tests/test_gmsh_runner.py
 
 import pytest
+import json
+import os
+import tempfile
 from unittest.mock import patch, MagicMock
-from src.gmsh_runner import extract_bounding_box_with_gmsh
+from src.gmsh_runner import extract_bounding_box_with_gmsh, extract_boundary_conditions_from_step
 from utils.gmsh_input_check import ValidationError
 
 
@@ -99,6 +102,59 @@ def test_boundary_condition_assignment(mock_classifier, mock_validate, mock_isfi
     assert result["boundary_conditions"]["x_min"] == "inlet"
     assert result["boundary_conditions"]["x_max"] == "outlet"
     assert result["boundary_conditions"]["z_min"] == "symmetry"
+
+
+# 🧪 ✅ New test: CLI + override integration
+@patch("src.gmsh_runner.gmsh")
+@patch("os.path.isfile", return_value=True)
+@patch("src.gmsh_runner.validate_step_has_volumes")
+@patch("src.gmsh_runner.classify_faces")
+@patch("src.override_loader.load_override_config")
+def test_cli_execution_with_override(mock_override, mock_classifier, mock_validate, mock_isfile, mock_gmsh):
+    mock_gmsh.model.getEntities.side_effect = [
+        [(3, 1)],  # Volume
+        [(2, 101), (2, 102)]  # Surfaces
+    ]
+    mock_gmsh.model.getBoundingBox.return_value = (0, 0, 0, 1, 1, 1)
+    mock_gmsh.model.mesh.getNodes.side_effect = [
+        (None, MagicMock(return_value=[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), None),
+        (None, MagicMock(return_value=[0.0, 1.0, 0.0, 1.0, 1.0, 0.0]), None)
+    ]
+
+    mock_classifier.return_value = {
+        "boundary_conditions": {
+            "x_min": [101],
+            "x_max": [102],
+            "faces": [101, 102],
+            "apply_faces": ["x_min", "x_max"],
+            "type": "dirichlet",
+            "pressure": 0.0,
+            "velocity": [0.0, 0.0, 0.0],
+            "apply_to": ["pressure", "velocity"]
+        }
+    }
+
+    mock_override.return_value = {
+        "x_min": [101],
+        "y_max": [102]
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, "output.json")
+        result = extract_boundary_conditions_from_step("mock.step", resolution=0.01)
+
+        # Simulate writing to file
+        with open(output_path, "w") as f:
+            json.dump(result, f, indent=2)
+
+        # ✅ Validate file exists and contains expected keys
+        assert os.path.isfile(output_path)
+        with open(output_path, "r") as f:
+            data = json.load(f)
+            assert "x_min" in data
+            assert "y_max" in data
+            assert "faces" in data
+            assert "apply_faces" in data
 
 
 

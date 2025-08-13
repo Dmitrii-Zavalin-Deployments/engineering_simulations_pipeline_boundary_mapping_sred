@@ -15,6 +15,10 @@ def load_classifier_config():
 
 CONFIG = load_classifier_config()
 
+# ✅ Import fallback clustering engine
+from src.clustering_engine import cluster_faces
+
+
 def compute_face_normal(vertices: List[List[float]]) -> np.ndarray:
     """
     Compute the normal vector of a face given its vertices.
@@ -32,6 +36,7 @@ def compute_face_normal(vertices: List[List[float]]) -> np.ndarray:
     norm = np.linalg.norm(normal)
     return normal / norm if norm != 0 else np.zeros(3)
 
+
 def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
     """
     Compute the angle in degrees between two vectors.
@@ -40,6 +45,7 @@ def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
     norm_product = np.linalg.norm(v1) * np.linalg.norm(v2)
     cos_theta = np.clip(dot / norm_product, -1.0, 1.0)
     return math.degrees(math.acos(cos_theta))
+
 
 def classify_face_direction(normal: np.ndarray, thresholds: Dict[str, float]) -> str:
     """
@@ -62,6 +68,7 @@ def classify_face_direction(normal: np.ndarray, thresholds: Dict[str, float]) ->
 
     return CONFIG.get("fallback_boundary_type", "wall")
 
+
 def classify_faces(faces: List[Dict]) -> Dict:
     """
     Classify all faces and return boundary condition mapping.
@@ -82,6 +89,7 @@ def classify_faces(faces: List[Dict]) -> Dict:
     }
 
     all_face_ids = []
+    ambiguous_faces = []
 
     for face in faces:
         normal = compute_face_normal(face["vertices"])
@@ -91,11 +99,23 @@ def classify_faces(faces: List[Dict]) -> Dict:
         if direction_label in directional_faces:
             directional_faces[direction_label].append(face["id"])
         else:
+            ambiguous_faces.append(face)
             if verbose:
                 print(f"[Classifier] Unrecognized direction label: {direction_label}")
 
         if verbose:
             print(f"[Classifier] Face {face['id']} → {direction_label} (normal: {normal})")
+
+    # ✅ Apply fallback clustering to ambiguous faces
+    if ambiguous_faces:
+        fallback_clusters = cluster_faces(ambiguous_faces)
+        for label, ids in fallback_clusters.items():
+            if verbose:
+                print(f"[Clustering] {label} → {len(ids)} faces")
+            if label in directional_faces:
+                directional_faces[label].extend(ids)
+            else:
+                directional_faces[label] = ids
 
     # ✅ Determine which directional labels are actively used
     apply_faces = [label for label, ids in directional_faces.items() if ids]
