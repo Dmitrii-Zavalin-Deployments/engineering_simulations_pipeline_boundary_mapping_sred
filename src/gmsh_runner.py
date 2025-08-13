@@ -54,6 +54,10 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
             raise ValueError("Invalid geometry: bounding box has zero size.")
 
+        # 🔧 Generate mesh before extracting surface nodes
+        gmsh.model.mesh.generate(3)
+        print(f"[GmshRunner] Mesh generation completed")
+
         # ✅ Extract surface faces and vertices with validation
         faces = []
         surface_entities = gmsh.model.getEntities(2)
