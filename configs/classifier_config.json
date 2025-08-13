@@ -15,7 +15,8 @@
   "normal_vector_method": "centroid_plane_fit",
   "allow_multiple_faces_per_direction": true,
   "fallback_boundary_type": "wall",
-  "log_classification_details": true
+  "log_classification_details": true,
+  "strict_face_validation": false
 }
 
 

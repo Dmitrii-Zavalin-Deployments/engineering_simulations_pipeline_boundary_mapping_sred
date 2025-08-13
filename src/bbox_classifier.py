@@ -20,6 +20,13 @@ def compute_face_normal(vertices: List[List[float]]) -> np.ndarray:
     Compute the normal vector of a face given its vertices.
     Assumes the face is planar and defined by at least 3 vertices.
     """
+    if len(vertices) < 3:
+        if CONFIG.get("log_classification_details", False):
+            print(f"[Classifier] Skipping face — insufficient vertices: {vertices}")
+        if CONFIG.get("strict_face_validation", False):
+            raise ValueError(f"Face has insufficient vertices: {vertices}")
+        return np.zeros(3)
+
     v0, v1, v2 = np.array(vertices[:3])
     normal = np.cross(v1 - v0, v2 - v0)
     norm = np.linalg.norm(normal)

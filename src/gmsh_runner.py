@@ -65,14 +65,21 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
         ny = int((max_y - min_y) / resolution)
         nz = int((max_z - min_z) / resolution)
 
-        # ✅ Extract surface faces and vertices
+        # ✅ Extract surface faces and vertices with validation
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         for dim, tag in surface_entities:
-            nodes = gmsh.model.mesh.getNodes(dim, tag)[1]
-            coords = nodes.reshape(-1, 3)
-            face_vertices = coords.tolist()
-            faces.append({"id": tag, "vertices": face_vertices})
+            node_data = gmsh.model.mesh.getNodes(dim, tag)
+            coords_raw = node_data[1] if node_data else []
+            if coords_raw is not None and len(coords_raw) >= 9:  # At least 3 vertices
+                try:
+                    coords = coords_raw.reshape(-1, 3)
+                    face_vertices = coords.tolist()
+                    faces.append({"id": tag, "vertices": face_vertices})
+                except Exception:
+                    continue  # Skip malformed face
+            else:
+                continue  # Skip empty or undersized face
 
         # ✅ Classify face directions
         boundary_conditions = classify_faces(faces)
