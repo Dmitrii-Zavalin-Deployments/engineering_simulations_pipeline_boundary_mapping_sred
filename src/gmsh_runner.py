@@ -13,11 +13,8 @@ import json
 import os
 import numpy as np
 
-# ✅ Import volume integrity checker
 from src.utils.gmsh_input_check import validate_step_has_volumes
-# ✅ Import fallback resolution profile loader
 from src.utils.input_validation import load_resolution_profile
-# ✅ Import face classifier
 from src.bbox_classifier import classify_faces
 
 
@@ -91,10 +88,10 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
             "faces": bc.get("faces", []),
             "type": bc.get("type", "dirichlet"),
             "apply_faces": bc.get("apply_faces", []),
-            "apply_to": bc.get("apply_to", ["pressure"]),
+            "apply_to": bc.get("apply_to", ["pressure", "velocity"]),
             "pressure": bc.get("pressure", 0.0),
             "velocity": bc.get("velocity", [0.0, 0.0, 0.0]),
-            "no_slip": bc.get("no_slip", False)
+            "no_slip": True  # ✅ Enforce physically accurate wall behavior
         }
 
         return boundary_conditions
