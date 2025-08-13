@@ -11,24 +11,27 @@ except ImportError:
 
 import json
 import os
+import numpy as np
 
 # ✅ Import volume integrity checker
 from src.utils.gmsh_input_check import validate_step_has_volumes
 # ✅ Import fallback resolution profile loader
 from src.utils.input_validation import load_resolution_profile
+# ✅ Import face classifier
+from src.bbox_classifier import classify_faces
 
 
 def extract_bounding_box_with_gmsh(step_path, resolution=None):
     """
     Parses STEP geometry with Gmsh and returns domain_definition
-    including bounding box and grid resolution.
+    including bounding box, grid resolution, and boundary conditions.
 
     Parameters:
         step_path (str or Path): Path to STEP file
         resolution (float or None): Grid resolution in meters. If None, fallback profile will be used.
 
     Returns:
-        dict: domain_definition dictionary
+        dict: domain_definition dictionary with boundary_conditions
     """
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
@@ -41,14 +44,14 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
         except Exception:
             resolution = 0.01  # 🔧 Final default fallback
 
-    gmsh.initialize()  # ✅ Defensive session entry
+    gmsh.initialize()
     try:
         gmsh.model.add("domain_model")
         gmsh.logger.start()
 
         validate_step_has_volumes(step_path)
 
-        gmsh.open(str(step_path))  # ✅ Ensure fileName is str
+        gmsh.open(str(step_path))
 
         volumes = gmsh.model.getEntities(3)
         entity_tag = volumes[0][1]
@@ -62,6 +65,18 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
         ny = int((max_y - min_y) / resolution)
         nz = int((max_z - min_z) / resolution)
 
+        # ✅ Extract surface faces and vertices
+        faces = []
+        surface_entities = gmsh.model.getEntities(2)
+        for dim, tag in surface_entities:
+            nodes = gmsh.model.mesh.getNodes(dim, tag)[1]
+            coords = nodes.reshape(-1, 3)
+            face_vertices = coords.tolist()
+            faces.append({"id": tag, "vertices": face_vertices})
+
+        # ✅ Classify face directions
+        boundary_conditions = classify_faces(faces)
+
         return {
             "min_x": min_x,
             "max_x": max_x,
@@ -71,10 +86,11 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
             "max_z": max_z,
             "nx": nx,
             "ny": ny,
-            "nz": nz
+            "nz": nz,
+            "boundary_conditions": boundary_conditions["boundary_conditions"]
         }
     finally:
-        gmsh.finalize()  # ✅ Guaranteed shutdown
+        gmsh.finalize()
 
 
 if __name__ == "__main__":

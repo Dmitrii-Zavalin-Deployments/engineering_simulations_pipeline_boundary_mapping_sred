@@ -1,8 +1,19 @@
+# src/bbox_classifier.py
+
 import numpy as np
 import math
-from typing import List, Dict, Tuple
+import json
+import os
+from typing import List, Dict
 
-DEFAULT_ANGLE_THRESHOLD_DEGREES = 15.0
+# ✅ Load external configuration
+CONFIG_PATH = os.path.join("configs", "classifier_config.json")
+
+def load_classifier_config():
+    with open(CONFIG_PATH, "r") as f:
+        return json.load(f)
+
+CONFIG = load_classifier_config()
 
 def compute_face_normal(vertices: List[List[float]]) -> np.ndarray:
     """
@@ -23,10 +34,10 @@ def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
     cos_theta = np.clip(dot / norm_product, -1.0, 1.0)
     return math.degrees(math.acos(cos_theta))
 
-def classify_face_direction(normal: np.ndarray, threshold: float = DEFAULT_ANGLE_THRESHOLD_DEGREES) -> str:
+def classify_face_direction(normal: np.ndarray, thresholds: Dict[str, float]) -> str:
     """
     Classify the direction of a face normal relative to bbox axes.
-    Returns one of: 'x_min', 'x_max', 'y_min', 'y_max', 'z_min', 'z_max', or 'unknown'
+    Returns one of: 'x_min', 'x_max', 'y_min', 'y_max', 'z_min', 'z_max', or fallback type.
     """
     axis_map = {
         'x_min': -np.array([1, 0, 0]),
@@ -39,15 +50,21 @@ def classify_face_direction(normal: np.ndarray, threshold: float = DEFAULT_ANGLE
 
     for label, axis in axis_map.items():
         angle = angle_between(normal, axis)
-        if angle <= threshold:
+        if angle <= math.degrees(math.acos(thresholds[label[0]])):
             return label
-    return 'unknown'
 
-def classify_faces(faces: List[Dict], threshold: float = DEFAULT_ANGLE_THRESHOLD_DEGREES) -> Dict:
+    return CONFIG.get("fallback_boundary_type", "wall")
+
+def classify_faces(faces: List[Dict]) -> Dict:
     """
     Classify all faces and return boundary condition mapping.
     Each face dict must contain: {'id': int, 'vertices': List[List[float]]}
     """
+    thresholds = CONFIG.get("directional_thresholds", {"x": 0.95, "y": 0.95, "z": 0.95})
+    boundary_map = CONFIG.get("default_boundary_map", {})
+    allow_multiple = CONFIG.get("allow_multiple_faces_per_direction", True)
+    verbose = CONFIG.get("log_classification_details", False)
+
     result = {
         "boundary_conditions": {
             "faces": [],
@@ -62,10 +79,25 @@ def classify_faces(faces: List[Dict], threshold: float = DEFAULT_ANGLE_THRESHOLD
 
     for face in faces:
         normal = compute_face_normal(face["vertices"])
-        label = classify_face_direction(normal, threshold)
+        direction_label = classify_face_direction(normal, thresholds)
+
         result["boundary_conditions"]["faces"].append(face["id"])
-        if label != "unknown":
-            result["boundary_conditions"][label].append(face["id"])
+        if direction_label in result["boundary_conditions"]:
+            result["boundary_conditions"][direction_label].append(face["id"])
+        else:
+            result["boundary_conditions"][direction_label] = [face["id"]]
+
+        if verbose:
+            print(f"[Classifier] Face {face['id']} → {direction_label} (normal: {normal})")
+
+    # ✅ Map to CFD boundary types
+    mapped_conditions = {
+        key: boundary_map.get(key, CONFIG.get("fallback_boundary_type", "wall"))
+        for key in result["boundary_conditions"]
+        if key != "faces"
+    }
+
+    result["boundary_conditions"].update(mapped_conditions)
 
     return result
 

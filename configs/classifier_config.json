@@ -1,0 +1,22 @@
+{
+  "directional_thresholds": {
+    "x": 0.95,
+    "y": 0.95,
+    "z": 0.95
+  },
+  "default_boundary_map": {
+    "x_min": "inlet",
+    "x_max": "outlet",
+    "y_min": "wall",
+    "y_max": "wall",
+    "z_min": "symmetry",
+    "z_max": "wall"
+  },
+  "normal_vector_method": "centroid_plane_fit",
+  "allow_multiple_faces_per_direction": true,
+  "fallback_boundary_type": "wall",
+  "log_classification_details": true
+}
+
+
+

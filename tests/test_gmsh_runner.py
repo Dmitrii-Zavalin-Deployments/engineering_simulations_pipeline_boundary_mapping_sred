@@ -66,4 +66,39 @@ def test_resolution_applies_correctly(mock_validate, mock_isfile, mock_gmsh):
     assert result["nz"] == 6
 
 
+# 🧪 ✅ New test: boundary condition classification
+@patch("src.gmsh_runner.gmsh")
+@patch("os.path.isfile", return_value=True)
+@patch("src.gmsh_runner.validate_step_has_volumes")
+@patch("src.gmsh_runner.classify_faces")
+def test_boundary_condition_assignment(mock_classifier, mock_validate, mock_isfile, mock_gmsh):
+    mock_gmsh.model.getEntities.side_effect = [
+        [(3, 99)],  # Volume entity
+        [(2, 1), (2, 2)]  # Surface entities
+    ]
+    mock_gmsh.model.getBoundingBox.return_value = (0, 0, 0, 2, 2, 2)
+    mock_gmsh.model.mesh.getNodes.side_effect = [
+        (None, MagicMock(return_value=[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]), None),
+        (None, MagicMock(return_value=[0.0, 1.0, 0.0, 1.0, 1.0, 0.0]), None)
+    ]
+
+    mock_classifier.return_value = {
+        "boundary_conditions": {
+            "x_min": "inlet",
+            "x_max": "outlet",
+            "y_min": "wall",
+            "y_max": "wall",
+            "z_min": "symmetry",
+            "z_max": "wall"
+        }
+    }
+
+    result = extract_bounding_box_with_gmsh("classified.step", resolution=0.5)
+
+    assert "boundary_conditions" in result
+    assert result["boundary_conditions"]["x_min"] == "inlet"
+    assert result["boundary_conditions"]["x_max"] == "outlet"
+    assert result["boundary_conditions"]["z_min"] == "symmetry"
+
+
 
