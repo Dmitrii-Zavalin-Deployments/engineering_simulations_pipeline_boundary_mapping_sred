@@ -1,7 +1,7 @@
 # src/gmsh_runner.py
 
 # -------------------------------------------------------------------
-# Gmsh-based geometry processor for STEP domain extraction pipeline
+# Gmsh-based geometry processor for STEP domain boundary condition extraction
 # -------------------------------------------------------------------
 
 try:
@@ -21,17 +21,17 @@ from src.utils.input_validation import load_resolution_profile
 from src.bbox_classifier import classify_faces
 
 
-def extract_bounding_box_with_gmsh(step_path, resolution=None):
+def extract_boundary_conditions_from_step(step_path, resolution=None):
     """
-    Parses STEP geometry with Gmsh and returns domain_definition
-    including bounding box, grid resolution, and boundary conditions.
+    Parses STEP geometry with Gmsh and returns boundary_conditions
+    metadata for simulation input.
 
     Parameters:
         step_path (str or Path): Path to STEP file
-        resolution (float or None): Grid resolution in meters. If None, fallback profile will be used.
+        resolution (float or None): Grid resolution in meters. Used for bounding box validation.
 
     Returns:
-        dict: {"domain_definition": {...}} matching schema
+        dict: boundary_conditions dictionary matching schema
     """
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
@@ -59,10 +59,6 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
 
         if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
             raise ValueError("Invalid geometry: bounding box has zero size.")
-
-        nx = max(1, int((max_x - min_x) / resolution))
-        ny = max(1, int((max_y - min_y) / resolution))
-        nz = max(1, int((max_z - min_z) / resolution))
 
         # ✅ Extract surface faces and vertices with validation
         faces = []
@@ -101,20 +97,7 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
             "no_slip": bc.get("no_slip", False)
         }
 
-        return {
-            "domain_definition": {
-                "min_x": min_x,
-                "max_x": max_x,
-                "min_y": min_y,
-                "max_y": max_y,
-                "min_z": min_z,
-                "max_z": max_z,
-                "nx": nx,
-                "ny": ny,
-                "nz": nz,
-                "boundary_conditions": boundary_conditions
-            }
-        }
+        return boundary_conditions
     finally:
         gmsh.finalize()
 
@@ -122,14 +105,14 @@ def extract_bounding_box_with_gmsh(step_path, resolution=None):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Gmsh STEP parser for domain metadata")
+    parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
     parser.add_argument("--step", type=str, required=True, help="Path to STEP file")
     parser.add_argument("--resolution", type=float, help="Grid resolution in meters")
-    parser.add_argument("--output", type=str, help="Path to write domain JSON")
+    parser.add_argument("--output", type=str, help="Path to write boundary_conditions JSON")
 
     args = parser.parse_args()
 
-    result = extract_bounding_box_with_gmsh(args.step, resolution=args.resolution)
+    result = extract_boundary_conditions_from_step(args.step, resolution=args.resolution)
 
     print(json.dumps(result, indent=2))
 

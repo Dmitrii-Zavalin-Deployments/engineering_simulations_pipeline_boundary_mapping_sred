@@ -1,120 +1,87 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yourdomain.org/schemas/domain_schema.json",
-  "title": "Domain Definition Schema",
-  "description": "Schema for validating spatial domain extents, resolution values, and boundary conditions in simulation pipelines.",
+  "$id": "https://yourdomain.org/schemas/boundary_conditions_schema.json",
+  "title": "Boundary Conditions Schema",
+  "description": "Schema for validating boundary condition metadata in simulation pipelines.",
   "type": "object",
-  "required": ["domain_definition"],
+  "required": [
+    "x_min", "x_max",
+    "y_min", "y_max",
+    "z_min", "z_max",
+    "faces", "type",
+    "apply_faces", "apply_to",
+    "pressure", "velocity",
+    "no_slip"
+  ],
   "properties": {
-    "domain_definition": {
-      "type": "object",
-      "required": [
-        "min_x", "max_x",
-        "min_y", "max_y",
-        "min_z", "max_z",
-        "nx", "ny", "nz",
-        "boundary_conditions"
-      ],
-      "properties": {
-        "min_x": {
-          "type": "number",
-          "description": "Minimum bound in x-direction"
-        },
-        "max_x": {
-          "type": "number",
-          "description": "Maximum bound in x-direction",
-          "minimum": 0.0
-        },
-        "min_y": {
-          "type": "number",
-          "description": "Minimum bound in y-direction"
-        },
-        "max_y": {
-          "type": "number",
-          "description": "Maximum bound in y-direction",
-          "minimum": 0.0
-        },
-        "min_z": {
-          "type": "number",
-          "description": "Minimum bound in z-direction"
-        },
-        "max_z": {
-          "type": "number",
-          "description": "Maximum bound in z-direction. Must be ≥ min_z; enforced in application logic",
-          "minimum": 0.0
-        },
-        "nx": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Grid resolution in x-direction"
-        },
-        "ny": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Grid resolution in y-direction"
-        },
-        "nz": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Grid resolution in z-direction"
-        },
-        "boundary_conditions": {
-          "type": "object",
-          "required": [
-            "x_min", "x_max",
-            "y_min", "y_max",
-            "z_min", "z_max",
-            "faces", "type",
-            "apply_faces", "apply_to",
-            "pressure", "velocity",
-            "no_slip"
-          ],
-          "properties": {
-            "x_min": { "type": "string" },
-            "x_max": { "type": "string" },
-            "y_min": { "type": "string" },
-            "y_max": { "type": "string" },
-            "z_min": { "type": "string" },
-            "z_max": { "type": "string" },
-            "faces": {
-              "type": "array",
-              "items": { "type": "integer" }
-            },
-            "type": {
-              "type": "string",
-              "enum": ["dirichlet", "neumann", "robin"]
-            },
-            "apply_faces": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
-              }
-            },
-            "apply_to": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "enum": ["pressure", "velocity", "temperature"]
-              }
-            },
-            "pressure": {
-              "type": "number"
-            },
-            "velocity": {
-              "type": "array",
-              "items": { "type": "number" },
-              "minItems": 3,
-              "maxItems": 3
-            },
-            "no_slip": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
-        }
+    "x_min": {
+      "type": "string",
+      "description": "Boundary condition on the minimum x face"
+    },
+    "x_max": {
+      "type": "string",
+      "description": "Boundary condition on the maximum x face"
+    },
+    "y_min": {
+      "type": "string",
+      "description": "Boundary condition on the minimum y face"
+    },
+    "y_max": {
+      "type": "string",
+      "description": "Boundary condition on the maximum y face"
+    },
+    "z_min": {
+      "type": "string",
+      "description": "Boundary condition on the minimum z face"
+    },
+    "z_max": {
+      "type": "string",
+      "description": "Boundary condition on the maximum z face"
+    },
+    "faces": {
+      "type": "array",
+      "items": {
+        "type": "integer"
       },
-      "additionalProperties": false
+      "description": "List of face IDs associated with boundary conditions"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["dirichlet", "neumann", "robin"],
+      "description": "Type of boundary condition"
+    },
+    "apply_faces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+      },
+      "description": "Faces to which the condition is applied"
+    },
+    "apply_to": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["pressure", "velocity", "temperature"]
+      },
+      "description": "Physical quantities affected by the condition"
+    },
+    "pressure": {
+      "type": "number",
+      "description": "Pressure value for the boundary condition"
+    },
+    "velocity": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "Velocity vector for the boundary condition"
+    },
+    "no_slip": {
+      "type": "boolean",
+      "description": "Whether the no-slip condition is applied"
     }
   },
   "additionalProperties": false
