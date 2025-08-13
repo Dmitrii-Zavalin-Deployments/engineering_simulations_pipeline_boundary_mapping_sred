@@ -21,19 +21,9 @@ from src.override_loader import load_override_config, apply_overrides
 
 
 def extract_boundary_conditions_from_step(step_path, resolution=None):
-    """
-    Parses STEP geometry with Gmsh and returns boundary_conditions
-    metadata for simulation input.
-
-    Parameters:
-        step_path (str or Path): Path to STEP file
-        resolution (float or None): Grid resolution in meters. Used for bounding box validation.
-
-    Returns:
-        dict: boundary_conditions dictionary matching schema
-    """
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
+    print(f"[GmshRunner] STEP file found: {step_path}")
 
     if resolution is None:
         try:
@@ -41,6 +31,7 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
             resolution = profile.get("default_resolution", {}).get("dx", 0.01)
         except Exception:
             resolution = 0.01
+    print(f"[GmshRunner] Using resolution: {resolution}")
 
     gmsh.initialize()
     try:
@@ -48,13 +39,17 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.logger.start()
 
         validate_step_has_volumes(step_path)
+        print(f"[GmshRunner] STEP file validated for volumes")
 
         gmsh.open(str(step_path))
+        print(f"[GmshRunner] STEP file opened")
 
         volumes = gmsh.model.getEntities(3)
+        print(f"[GmshRunner] Volume entities: {volumes}")
         entity_tag = volumes[0][1]
 
         min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, entity_tag)
+        print(f"[GmshRunner] Bounding box: ({min_x}, {min_y}, {min_z}) → ({max_x}, {max_y}, {max_z})")
 
         if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
             raise ValueError("Invalid geometry: bounding box has zero size.")
@@ -62,37 +57,50 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         # ✅ Extract surface faces and vertices with validation
         faces = []
         surface_entities = gmsh.model.getEntities(2)
+        print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
+
         for dim, tag in surface_entities:
             node_data = gmsh.model.mesh.getNodes(dim, tag)
             coords_raw = node_data[1] if node_data else []
+            print(f"[GmshRunner] Surface {tag} node count: {len(coords_raw)}")
+
             if coords_raw is not None and len(coords_raw) >= 9:
                 try:
                     coords = coords_raw.reshape(-1, 3)
                     face_vertices = coords.tolist()
                     faces.append({"id": tag, "vertices": face_vertices})
-                except Exception:
+                except Exception as e:
+                    print(f"[GmshRunner] Failed to reshape nodes for surface {tag}: {e}")
                     continue
             else:
+                print(f"[GmshRunner] Skipping surface {tag} due to insufficient node data")
                 continue
+
+        print(f"[GmshRunner] Total faces extracted: {len(faces)}")
 
         # ✅ Classify face directions
         classified = classify_faces(faces)
+        print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
         # 🧩 Apply overrides if available
         try:
             overrides = load_override_config()
+            print(f"[OverrideLoader] Loaded overrides: {overrides}")
             bc = classified.get("boundary_conditions", {})
             bc_updated = apply_overrides(bc, overrides)
             classified["boundary_conditions"] = bc_updated
+            print(f"[OverrideLoader] Applied overrides")
         except Exception as e:
-            print(f"[Override] Skipped due to error: {e}")
+            print(f"[OverrideLoader] Skipped due to error: {e}")
 
         # ✅ Generate schema-compliant block
         boundary_block = generate_boundary_block(classified)
+        print(f"[SchemaWriter] Final boundary block: {json.dumps(boundary_block, indent=2)}")
 
         return boundary_block
     finally:
         gmsh.finalize()
+        print(f"[GmshRunner] Gmsh finalized")
 
 
 if __name__ == "__main__":
@@ -111,6 +119,7 @@ if __name__ == "__main__":
 
     if args.output:
         write_boundary_json(args.output, result)
+        print(f"[SchemaWriter] Boundary conditions written to: {args.output}")
 
 
 
