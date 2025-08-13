@@ -41,7 +41,8 @@
     "faces": {
       "type": "array",
       "items": {
-        "type": "integer"
+        "type": "integer",
+        "minimum": 0
       },
       "description": "List of face IDs associated with boundary conditions"
     },
@@ -68,20 +69,24 @@
     },
     "pressure": {
       "type": "number",
-      "description": "Pressure value for the boundary condition"
+      "minimum": -1e6,
+      "maximum": 1e6,
+      "description": "Pressure value for the boundary condition (Pa)"
     },
     "velocity": {
       "type": "array",
       "items": {
-        "type": "number"
+        "type": "number",
+        "minimum": -1000,
+        "maximum": 1000
       },
       "minItems": 3,
       "maxItems": 3,
-      "description": "Velocity vector for the boundary condition"
+      "description": "Velocity vector [vx, vy, vz] in m/s"
     },
     "no_slip": {
       "type": "boolean",
-      "description": "Whether the no-slip condition is applied"
+      "description": "Whether the no-slip condition is applied (true = zero tangential velocity)"
     }
   },
   "additionalProperties": false

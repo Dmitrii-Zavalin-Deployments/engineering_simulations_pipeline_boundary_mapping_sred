@@ -72,39 +72,47 @@ def classify_faces(faces: List[Dict]) -> Dict:
     allow_multiple = CONFIG.get("allow_multiple_faces_per_direction", True)
     verbose = CONFIG.get("log_classification_details", False)
 
-    result = {
-        "boundary_conditions": {
-            "faces": [],
-            "x_min": [],
-            "x_max": [],
-            "y_min": [],
-            "y_max": [],
-            "z_min": [],
-            "z_max": [],
-        }
+    directional_faces = {
+        "x_min": [],
+        "x_max": [],
+        "y_min": [],
+        "y_max": [],
+        "z_min": [],
+        "z_max": []
     }
+
+    all_face_ids = []
 
     for face in faces:
         normal = compute_face_normal(face["vertices"])
         direction_label = classify_face_direction(normal, thresholds)
 
-        result["boundary_conditions"]["faces"].append(face["id"])
-        if direction_label in result["boundary_conditions"]:
-            result["boundary_conditions"][direction_label].append(face["id"])
+        all_face_ids.append(face["id"])
+        if direction_label in directional_faces:
+            directional_faces[direction_label].append(face["id"])
         else:
-            result["boundary_conditions"][direction_label] = [face["id"]]
+            if verbose:
+                print(f"[Classifier] Unrecognized direction label: {direction_label}")
 
         if verbose:
             print(f"[Classifier] Face {face['id']} → {direction_label} (normal: {normal})")
 
-    # ✅ Map to CFD boundary types
+    # ✅ Determine which directional labels are actively used
+    apply_faces = [label for label, ids in directional_faces.items() if ids]
+
+    # ✅ Map directional labels to CFD boundary types
     mapped_conditions = {
-        key: boundary_map.get(key, CONFIG.get("fallback_boundary_type", "wall"))
-        for key in result["boundary_conditions"]
-        if key != "faces"
+        label: boundary_map.get(label, CONFIG.get("fallback_boundary_type", "wall"))
+        for label in directional_faces
     }
 
-    result["boundary_conditions"].update(mapped_conditions)
+    result = {
+        "boundary_conditions": {
+            "faces": all_face_ids,
+            "apply_faces": apply_faces,
+            **mapped_conditions
+        }
+    }
 
     return result
 
