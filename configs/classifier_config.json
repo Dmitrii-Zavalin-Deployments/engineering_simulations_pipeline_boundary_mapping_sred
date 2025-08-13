@@ -1,15 +1,15 @@
 {
   "directional_thresholds": {
-    "x": 0.95,
-    "y": 0.95,
-    "z": 0.95
+    "x": 0.90,
+    "y": 0.90,
+    "z": 0.90
   },
   "default_boundary_map": {
     "x_min": "inlet",
     "x_max": "outlet",
     "y_min": "wall",
     "y_max": "wall",
-    "z_min": "symmetry",
+    "z_min": "wall",
     "z_max": "wall"
   },
   "normal_vector_method": "centroid_plane_fit",
