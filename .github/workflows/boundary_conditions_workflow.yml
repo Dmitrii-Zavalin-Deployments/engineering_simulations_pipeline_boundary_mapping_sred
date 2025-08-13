@@ -1,101 +1,169 @@
-name: Boundary Condition Generation
+# 📄 .github/workflows/STEP Spatial Metadata Processor.yml
+
+name: STEP Spatial Metadata Processor
 
 on:
   push:
+    branches:
+      - "**"
   workflow_dispatch:
 
 jobs:
-  generate-boundary-conditions:
+  process_step_for_coordinates:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      ENABLE_RULE_DEBUG: true
+
     steps:
+      - name: 🛎️ Checkout repository
+        uses: actions/checkout@v3
 
-      # ✅ 1️⃣ Checkout Repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # ✅ 2️⃣ Set up Python
-      - name: Set up Python
+      - name: 🐍 Set Python version
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.11'
 
-      # ✅ 3️⃣ Install Dependencies
-      - name: Install Python Dependencies
+      - name: 🧱 Install system dependencies (Gmsh, Qt, etc.)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglu1-mesa-dev \
+            libfreetype6-dev \
+            libfontconfig1-dev \
+            libxrender1 \
+            gmsh
+
+      - name: 🐍 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ✅ 4️⃣ Grant Execution Permissions for Dropbox Shell Script (Download)
-      - name: Make `download_from_dropbox.sh` Executable
+      - name: 🔍 Verify Gmsh version
+        run: python -c "import gmsh; print('Gmsh version:', gmsh.__version__)"
+
+      - name: ✅ Verify installed packages
+        run: |
+          pip freeze
+          pip check
+
+      - name: 🧹 Clear simulation output artifacts
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/data/testing-input-output/"*
+          echo "✅ Output directories cleaned"
+
+      - name: ✅ Make Dropbox download script executable
         run: chmod +x src/download_from_dropbox.sh
 
-      # ✅ 5️⃣ Run Dropbox Shell Script to Fetch Files
-      - name: Download Simulation Files from Dropbox
+      - name: ☁️ Download simulation files from Dropbox
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/download_from_dropbox.sh
 
-      # ✅ 6️⃣ Verify Downloaded Files Exist (Programmatic Check)
-      - name: Verify File Existence
+      - name: 🔎 Normalize STEP filename
         run: |
-          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json ] && [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json ]; then
-            echo "✅ Both mesh_data.json and initial_data.json were downloaded successfully."
-          else
-            echo "❌ ERROR: One or both of the required files were not found!"
+          STEP_FILES=$(find data/testing-input-output -maxdepth 1 -type f -name "*.step")
+          COUNT=$(echo "$STEP_FILES" | wc -l)
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "❌ No STEP file found. Cannot proceed."
             exit 1
-          fi
+          elif [ "$COUNT" -gt 1 ]; then
+            echo "⚠️ Multiple STEP files found. Checking for input.step to clean up..."
+            echo "$STEP_FILES" | grep "input.step" | while read INPUT_FILE; do
+              echo "🧹 Deleting redundant STEP file: $INPUT_FILE"
+              rm -f "$INPUT_FILE"
+            done
+            STEP_FILES=$(find data/testing-input-output -maxdepth 1 -type f -name "*.step")
+            COUNT=$(echo "$STEP_FILES" | wc -l)
 
-      # ✅ 7️⃣ Delete Previous `fluid_simulation_input.json` If Exists
-      - name: Delete Previous Fluid Simulation Input JSON
-        run: |
-          if [ -f $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json ]; then
-            rm $GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json
-            echo "🗑️ Deleted previous fluid_simulation_input.json file."
+            if [ "$COUNT" -eq 1 ]; then
+              STEP_FILE=$(echo "$STEP_FILES")
+              mv "$STEP_FILE" data/testing-input-output/input.step
+              echo "✅ Normalized STEP file: $STEP_FILE → input.step"
+            elif [ "$COUNT" -eq 0 ]; then
+              echo "❌ No STEP file found after cleanup."
+              exit 1
+            else
+              echo "❌ Still multiple STEP files found after input.step cleanup:"
+              echo "$STEP_FILES"
+              exit 1
+            fi
           else
-            echo "ℹ️ No previous fluid_simulation_input.json found—proceeding with new generation."
+            STEP_FILE=$(echo "$STEP_FILES")
+            if [ "$STEP_FILE" != "data/testing-input-output/input.step" ]; then
+              mv "$STEP_FILE" data/testing-input-output/input.step
+              echo "✅ Renamed $STEP_FILE to input.step"
+            else
+              echo "ℹ️ STEP file is already named input.step. No renaming needed."
+            fi
           fi
 
-      # ✅ 7️⃣ Debug Directory Structure Before JSON Merge
-      - name: Debug Directory Structure Before JSON Merge
-        run: ls -R $GITHUB_WORKSPACE
-
-      # ✅ 8️⃣ Run JSON Merge Script
-      - name: Merge JSON Files
-        working-directory: ./src
+      - name: 🧠 Run domain extraction via Gmsh CLI module
         run: |
-          python merge_json_files.py \
-            --mesh "$GITHUB_WORKSPACE/downloaded_simulation_files/mesh_data.json" \
-            --initial "$GITHUB_WORKSPACE/downloaded_simulation_files/initial_data.json" \
-            --output "$GITHUB_WORKSPACE/downloaded_simulation_files/fluid_simulation_input.json"
+          python3 src/gmsh_runner.py \
+            --step data/testing-input-output/input.step \
+            --resolution 0.01 \
+            --output data/testing-input-output/enriched_metadata.json
 
-      # ✅ Debug: List Directory Before Verifying Output Files
-      - name: Debug Directory Structure Before Verification
+      - name: 🔍 Validate output JSON against schema
+        run: |
+          python -c "
+          import json, jsonschema
+          from pathlib import Path
+          output_path = Path('data/testing-input-output/enriched_metadata.json')
+          if not output_path.exists():
+              raise FileNotFoundError(f'Schema validation failed — file not found: {output_path}')
+          with open('schemas/domain_schema.json') as s, open(output_path) as d:
+              schema = json.load(s)
+              data = json.load(d)
+              jsonschema.validate(instance=data, schema=schema)
+          "
+          echo "✅ Output schema validated"
+
+      - name: 🔍 Print sys.path for module discovery insight
+        run: python -c "import sys; print('PYTHON sys.path:', sys.path)"
+
+      - name: 🧪 Sanity check - validate 'is_literal' import
+        run: |
+          echo "🔎 Verifying that 'is_literal' is discoverable and functional..."
+          python -c "from src.validation.expression_utils import is_literal; print('Sample result:', is_literal('123'))"
+          echo "✅ Import check passed. Proceeding to full test suite."
+
+      - name: 🧹 Purge stale compiled Python artifacts
+        run: |
+          echo "🧹 Removing __pycache__ and *.pyc files across workspace..."
+          find $GITHUB_WORKSPACE -type d -name "__pycache__" -exec rm -rf {} +
+          find $GITHUB_WORKSPACE -type f -name "*.pyc" -delete
+          echo "✅ Cleared cached Python artifacts"
+
+      - name: 🚀 Print relaxed-mode test confirmation
+        run: |
+          echo "🧪 Ensuring relaxed-mode rule tests are captured..."
+          grep -r "type_check_mode.*relaxed" tests/rules/test_rule_engine_integration.py || echo "⚠️ No relaxed-mode tests found"
+
+      - name: 🧪 Run Unit Tests
+        run: |
+          pytest -s tests/ --verbose -ra
+          echo "✅ Unit tests completed."
+
+      - name: 🧭 Debug directory tree
         run: ls -R $GITHUB_WORKSPACE
 
-      # ✅ 9️⃣ Debug Generated Files (Verify Output File Exists)
-      - name: Debug Generated Files
-        run: ls -l $GITHUB_WORKSPACE/downloaded_simulation_files/
-
-      # ✅ 🔟 Run Unit and Integration Tests
-      - name: Run Unit Tests
-        run: PYTHONPATH=src pytest tests --verbose
-
-      # ✅ 1️⃣1️⃣ Grant Execution Permissions for Dropbox Shell Script (Upload)
-      - name: Make `upload_to_dropbox.sh` Executable
+      - name: ✅ Make upload script executable
         run: chmod +x src/upload_to_dropbox.sh
 
-      # ✅ 🔍 Debugging Step BEFORE Uploading to Dropbox
-      - name: Debug Before Dropbox Upload
-        run: |
-          echo "🔍 Checking directory structure before upload..."
-          ls -R $GITHUB_WORKSPACE
-
-      # ✅ 1️⃣2️⃣ Upload Generated Output File to Dropbox
-      - name: Upload Fluid Simulation Input to Dropbox
+      - name: ☁️ Upload outputs to Dropbox
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
+
+
+
+
+
+
