@@ -111,7 +111,6 @@ if __name__ == "__main__":
 
     if args.output:
         write_boundary_json(args.output, result)
-        print(f"[SchemaWriter] Boundary conditions written to: {args.output}")
 
 
 

@@ -63,7 +63,8 @@ def classify_face_direction(normal: np.ndarray, thresholds: Dict[str, float]) ->
 
     for label, axis in axis_map.items():
         angle = angle_between(normal, axis)
-        if angle <= math.degrees(math.acos(thresholds[label[0]])):
+        threshold = thresholds.get(label[0], 0.95)
+        if angle <= math.degrees(math.acos(threshold)):
             return label
 
     return CONFIG.get("fallback_boundary_type", "wall")
@@ -74,10 +75,11 @@ def classify_faces(faces: List[Dict]) -> Dict:
     Classify all faces and return boundary condition mapping.
     Each face dict must contain: {'id': int, 'vertices': List[List[float]]}
     """
-    thresholds = CONFIG.get("directional_thresholds", {"x": 0.95, "y": 0.95, "z": 0.95})
+    thresholds = CONFIG.get("directional_thresholds", {"x": 0.85, "y": 0.85, "z": 0.85})
     boundary_map = CONFIG.get("default_boundary_map", {})
     allow_multiple = CONFIG.get("allow_multiple_faces_per_direction", True)
     verbose = CONFIG.get("log_classification_details", False)
+    enable_clustering = CONFIG.get("enable_fallback_clustering", True)
 
     directional_faces = {
         "x_min": [],
@@ -106,8 +108,8 @@ def classify_faces(faces: List[Dict]) -> Dict:
         if verbose:
             print(f"[Classifier] Face {face['id']} → {direction_label} (normal: {normal})")
 
-    # ✅ Apply fallback clustering to ambiguous faces
-    if ambiguous_faces:
+    # ✅ Apply fallback clustering to ambiguous faces if enabled
+    if enable_clustering and ambiguous_faces:
         fallback_clusters = cluster_faces(ambiguous_faces)
         for label, ids in fallback_clusters.items():
             if verbose:
