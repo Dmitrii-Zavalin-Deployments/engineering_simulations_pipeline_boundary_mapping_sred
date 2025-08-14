@@ -101,6 +101,14 @@ jobs:
             fi
           fi
 
+      - name: 🧩 Inject inlet boundary using initial conditions
+        run: |
+          echo "🔧 Running inlet boundary generator..."
+          python3 src/create_inlet_boundary.py \
+            --flow-data data/testing-input-output/flow_data.json \
+            --boundary-config data/testing-input-output/boundary_conditions_gmsh.json
+          echo "✅ Inlet boundary injected successfully"
+      
       - name: 🧠 Run domain extraction via Gmsh CLI module
         run: |
           python3 src/gmsh_runner.py \
@@ -161,9 +169,6 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
-
-
-
 
 
 
