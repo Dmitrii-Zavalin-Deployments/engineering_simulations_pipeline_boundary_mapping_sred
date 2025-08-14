@@ -101,6 +101,13 @@ jobs:
             fi
           fi
 
+      - name: 🧠 Run domain extraction via Gmsh CLI module
+        run: |
+          python3 src/gmsh_runner.py \
+            --step data/testing-input-output/input.step \
+            --resolution 0.01 \
+            --output data/testing-input-output/boundary_conditions_gmsh.json
+
       - name: 🧩 Inject inlet boundary using initial conditions
         run: |
           echo "🔧 Running inlet boundary generator..."
@@ -108,13 +115,6 @@ jobs:
             --flow-data data/testing-input-output/flow_data.json \
             --boundary-config data/testing-input-output/boundary_conditions_gmsh.json
           echo "✅ Inlet boundary injected successfully"
-      
-      - name: 🧠 Run domain extraction via Gmsh CLI module
-        run: |
-          python3 src/gmsh_runner.py \
-            --step data/testing-input-output/input.step \
-            --resolution 0.01 \
-            --output data/testing-input-output/boundary_conditions_gmsh.json
 
       - name: 🔍 Validate output JSON against schema
         run: |
