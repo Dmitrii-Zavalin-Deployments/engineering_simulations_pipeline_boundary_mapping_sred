@@ -87,6 +87,30 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
 
         # ✅ Generate schema-compliant block
         boundary_block = generate_boundary_block(classified)
+        print(f"[SchemaWriter] Initial boundary block: {json.dumps(boundary_block, indent=2)}")
+
+        # ✅ Inject inlet boundary using flow_data.json
+        flow_data_path = "data/testing-input-output/flow_data.json"
+        if os.path.isfile(flow_data_path):
+            try:
+                with open(flow_data_path, "r") as f:
+                    flow_data = json.load(f)
+                velocity = flow_data["initial_conditions"]["initial_velocity"]
+                pressure = flow_data["initial_conditions"]["initial_pressure"]
+
+                # Inject values directly into top-level boundary block
+                boundary_block["apply_faces"] = ["x_min"]
+                boundary_block["apply_to"] = ["velocity", "pressure"]
+                boundary_block["velocity"] = velocity
+                boundary_block["pressure"] = pressure
+                boundary_block["no_slip"] = True
+
+                print(f"[GmshRunner] Inlet boundary injected from flow_data.json")
+            except Exception as e:
+                print(f"[GmshRunner] Failed to inject inlet boundary: {e}")
+        else:
+            print(f"[GmshRunner] flow_data.json not found. Skipping inlet injection.")
+
         print(f"[SchemaWriter] Final boundary block: {json.dumps(boundary_block, indent=2)}")
 
         return boundary_block
@@ -111,6 +135,5 @@ if __name__ == "__main__":
 
     if args.output:
         write_boundary_json(args.output, result)
-
 
 
