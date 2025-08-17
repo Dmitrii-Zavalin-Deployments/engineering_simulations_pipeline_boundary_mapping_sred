@@ -9,7 +9,6 @@ from pathlib import Path
 from pipeline.metadata_enrichment import enrich_metadata_pipeline
 from src.utils.domain_loader import DomainLoader
 
-# 🩹 Local fallback stubs to satisfy missing module references
 class StepBoundingBoxError(Exception):
     pass
 
@@ -39,7 +38,6 @@ def compute_grid_dimensions(bounds, resolution):
         "nz": max(1, int(dz / resolution)),
     }
 
-# 🔧 Dummy bounding box fixture
 @pytest.fixture
 def dummy_bounds():
     return {
@@ -56,11 +54,21 @@ def test_geometry_was_detected():
         metadata = json.load(f)
         domain = metadata.get("domain_definition", {})
         assert domain, "No domain_definition found in metadata"
-        assert domain.get("min_x") is not None, "Missing min_x"
-        assert domain.get("max_x") is not None, "Missing max_x"
-        assert domain["max_x"] - domain["min_x"] > 0, "Invalid domain extent"
+        assert domain.get("min_x") is not None
+        assert domain.get("max_x") is not None
+        assert domain["max_x"] - domain["min_x"] > 0
 
-# 🧪 Unit Tests — Bounding Box
+def test_enriched_metadata_file_structure():
+    metadata_path = Path("data/testing-input-output/enriched_metadata.json")
+    assert metadata_path.exists(), "Metadata file not found"
+
+    with metadata_path.open() as f:
+        data = json.load(f)
+
+    required_keys = ["domain_definition", "domain_size", "spacing_hint", "resolution_density"]
+    for key in required_keys:
+        assert key in data, f"Missing key in metadata output: {key}"
+
 def test_validate_bounding_box_success(dummy_bounds):
     assert validate_bounding_box(dummy_bounds) is True
 
@@ -78,7 +86,6 @@ def test_validate_bounding_box_bad_types():
     with pytest.raises(StepBoundingBoxError):
         validate_bounding_box(malformed)
 
-# 🧪 Unit Tests — Grid Resolution
 def test_compute_grid_dimensions_valid(dummy_bounds):
     grid = compute_grid_dimensions(dummy_bounds, resolution=0.1)
     assert grid["nx"] > 0 and grid["ny"] > 0 and grid["nz"] > 0
@@ -92,7 +99,6 @@ def test_compute_grid_dimensions_missing_bounds():
     with pytest.raises(GridResolutionError):
         compute_grid_dimensions(incomplete, resolution=0.1)
 
-# 🧪 Integration Test — Metadata Enrichment
 def test_metadata_enrichment_with_resolution(dummy_bounds):
     nx = 12
     ny = 25
@@ -103,11 +109,9 @@ def test_metadata_enrichment_with_resolution(dummy_bounds):
         (dummy_bounds["zmax"] - dummy_bounds["zmin"])
     )
     enriched = enrich_metadata_pipeline(nx, ny, nz, bounding_volume, config_flag=True)
-    assert "domain_size" in enriched
-    assert "spacing_hint" in enriched
-    assert "resolution_density" in enriched
+    for key in ["domain_size", "spacing_hint", "resolution_density"]:
+        assert key in enriched
 
-# 🧪 Integration Test — Metadata Structure
 def test_metadata_output_structure(tmp_path, dummy_bounds):
     metadata = {
         "domain_definition": {
@@ -131,7 +135,6 @@ def test_metadata_output_structure(tmp_path, dummy_bounds):
     for key in ["min_x", "max_x", "min_y", "max_y", "min_z", "max_z", "nx", "ny", "nz"]:
         assert key in content["domain_definition"]
 
-# 🧪 System Test — Full CLI Execution
 STEP_PATH = Path("data/testing-input-output/input.step")
 
 @pytest.mark.skipif(not STEP_PATH.exists(), reason="Required STEP file missing for system test.")
@@ -162,16 +165,17 @@ def test_run_pipeline_execution(tmp_path):
         metadata = json.load(f)
 
     assert "domain_definition" in metadata
-    domain = metadata["domain_definition"]
+    assert "domain_size" in metadata
+    assert "spacing_hint" in metadata
+    assert "resolution_density" in metadata
 
+    domain = metadata["domain_definition"]
     computed_nx = int((domain["max_x"] - domain["min_x"]) / resolution)
     computed_ny = int((domain["max_y"] - domain["min_y"]) / resolution)
     computed_nz = int((domain["max_z"] - domain["min_z"]) / resolution)
 
-    assert computed_nx > 0, "Computed nx must be positive"
-    assert computed_ny > 0, "Computed ny must be positive"
-    assert computed_nz > 0, "Computed nz must be positive"
-
-
+    assert computed_nx > 0
+    assert computed_ny > 0
+    assert computed_nz > 0
 
 
