@@ -144,10 +144,10 @@ jobs:
           echo "🧪 Ensuring relaxed-mode rule tests are captured..."
           grep -r "type_check_mode.*relaxed" tests/rules/test_rule_engine_integration.py || echo "⚠️ No relaxed-mode tests found"
 
-      # - name: 🧪 Run Unit Tests
-      #   run: |
-      #     pytest -s tests/ --verbose -ra
-      #     echo "✅ Unit tests completed."
+      - name: 🧪 Run Unit Tests
+        run: |
+          pytest -s tests/ --verbose -ra
+          echo "✅ Unit tests completed."
 
       - name: 🧭 Debug directory tree
         run: ls -R $GITHUB_WORKSPACE
@@ -161,6 +161,5 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
-
 
 
