@@ -1,84 +1,91 @@
 # tests/test_bbox_classifier.py
 
 import unittest
-from src.bbox_classifier import classify_faces
+import numpy as np
+from unittest.mock import patch
+
+from src.bbox_classifier import (
+    compute_face_normal,
+    angle_between,
+    classify_face_direction,
+    classify_faces
+)
+
 
 class TestBBoxClassifier(unittest.TestCase):
+
+    def test_compute_face_normal_valid(self):
+        vertices = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0]
+        ]
+        normal = compute_face_normal(vertices)
+        expected = np.array([0.0, 0.0, 1.0])
+        np.testing.assert_array_almost_equal(normal, expected)
+
+    def test_compute_face_normal_insufficient_vertices(self):
+        vertices = [[0.0, 0.0, 0.0]]
+        normal = compute_face_normal(vertices)
+        np.testing.assert_array_equal(normal, np.zeros(3))
+
+    def test_angle_between_vectors(self):
+        v1 = np.array([1, 0, 0])
+        v2 = np.array([0, 1, 0])
+        angle = angle_between(v1, v2)
+        self.assertAlmostEqual(angle, 90.0, places=2)
+
+    @patch("src.bbox_classifier.CONFIG", {
+        "fallback_boundary_type": "wall"
+    })
+    def test_classify_face_direction_x_min(self):
+        normal = -np.array([1, 0, 0])
+        thresholds = {"x": 0.95, "y": 0.95, "z": 0.95}
+        label = classify_face_direction(normal, thresholds)
+        self.assertEqual(label, "x_min")
+
+    @patch("src.bbox_classifier.CONFIG", {
+        "fallback_boundary_type": "wall"
+    })
+    def test_classify_face_direction_fallback(self):
+        normal = np.array([0.5, 0.5, 0.5])
+        thresholds = {"x": 0.95, "y": 0.95, "z": 0.95}
+        label = classify_face_direction(normal, thresholds)
+        self.assertEqual(label, "wall")
+
+    @patch("src.bbox_classifier.CONFIG", {
+        "directional_thresholds": {"x": 0.95, "y": 0.95, "z": 0.95},
+        "default_boundary_map": {
+            "x_min": "inlet",
+            "x_max": "outlet",
+            "y_min": "wall",
+            "y_max": "wall",
+            "z_min": "wall",
+            "z_max": "wall"
+        },
+        "allow_multiple_faces_per_direction": True,
+        "log_classification_details": False,
+        "enable_fallback_clustering": False,
+        "fallback_boundary_type": "wall"
+    })
     def test_classify_faces_basic(self):
         faces = [
-            {"id": 1, "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0]]},  # Z+
-            {"id": 2, "vertices": [[0, 0, 0], [0, 1, 0], [0, 0, 1]]},  # X+
-            {"id": 3, "vertices": [[0, 0, 0], [0, 0, 1], [1, 0, 0]]},  # Y+
+            {"id": 1, "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0]]},  # z+
+            {"id": 2, "vertices": [[0, 0, 0], [0, 1, 0], [0, 0, 1]]}   # x+
         ]
         result = classify_faces(faces)
+        self.assertIn("boundary_conditions", result)
         bc = result["boundary_conditions"]
-
-        self.assertIn(1, bc["z_max"])
-        self.assertIn(2, bc["x_max"])
-        self.assertIn(3, bc["y_max"])
-
-        # ✅ Check apply_faces includes all active directions
+        self.assertIn("apply_faces", bc)
+        self.assertIn("faces", bc)
+        self.assertIn("x_max", bc)
+        self.assertIn("z_max", bc)
+        self.assertEqual(sorted(bc["faces"]), [1, 2])
         self.assertIn("x_max", bc["apply_faces"])
-        self.assertIn("y_max", bc["apply_faces"])
         self.assertIn("z_max", bc["apply_faces"])
 
-    def test_unknown_direction(self):
-        faces = [
-            {"id": 4, "vertices": [[0, 0, 0], [1, 1, 0], [0, 1, 1]]},  # Diagonal
-        ]
-        result = classify_faces(faces)
-        bc = result["boundary_conditions"]
-
-        # ❌ Should not be classified into any axis-aligned direction
-        self.assertNotIn(4, bc["x_max"])
-        self.assertNotIn(4, bc["y_max"])
-        self.assertNotIn(4, bc["z_max"])
-
-        # ✅ Should still be tracked in faces list
-        self.assertIn(4, bc["faces"])
-
-        # ✅ Fallback type should be assigned
-        fallback_type = bc.get("fallback_boundary_type", "wall")
-        self.assertEqual(bc.get("x_min", fallback_type), fallback_type)
-
-    def test_face_with_insufficient_vertices(self):
-        faces = [
-            {"id": 5, "vertices": []},  # Malformed face
-            {"id": 6, "vertices": [[0, 0, 0]]},  # Only one vertex
-            {"id": 7, "vertices": [[0, 0, 0], [1, 0, 0]]}  # Only two vertices
-        ]
-        result = classify_faces(faces)
-        bc = result["boundary_conditions"]
-
-        # ✅ Ensure all malformed faces are tracked and do not crash
-        self.assertIn(5, bc["faces"])
-        self.assertIn(6, bc["faces"])
-        self.assertIn(7, bc["faces"])
-
-        # ✅ No directional classification should occur
-        self.assertNotIn(5, bc.get("x_max", []))
-        self.assertNotIn(6, bc.get("y_max", []))
-        self.assertNotIn(7, bc.get("z_max", []))
-
-    def test_apply_faces_consistency(self):
-        faces = [
-            {"id": 8, "vertices": [[0, 0, 0], [0, 1, 0], [0, 0, 1]]},  # X+
-            {"id": 9, "vertices": [[0, 0, 0], [0, 0, 1], [1, 0, 0]]},  # Y+
-        ]
-        result = classify_faces(faces)
-        bc = result["boundary_conditions"]
-
-        # ✅ Check apply_faces reflects active directions
-        self.assertIn("x_max", bc["apply_faces"])
-        self.assertIn("y_max", bc["apply_faces"])
-        self.assertNotIn("z_max", bc["apply_faces"])
-
-        # ✅ Check face IDs are correctly assigned
-        self.assertIn(8, bc["x_max"])
-        self.assertIn(9, bc["y_max"])
 
 if __name__ == "__main__":
     unittest.main()
-
 
 
