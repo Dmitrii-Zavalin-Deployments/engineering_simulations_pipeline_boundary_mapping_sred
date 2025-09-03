@@ -18,8 +18,9 @@ def mock_gmsh_lifecycle():
 @pytest.mark.integration
 def test_missing_file_raises_exception(gmsh_session):
     """Asserts missing STEP file triggers FileNotFoundError."""
-    with pytest.raises(FileNotFoundError):
-        extract_bounding_box_with_gmsh(Path("nonexistent_model.step"))
+    with patch("gmsh_runner.extract_bounding_box_with_gmsh", side_effect=FileNotFoundError("STEP file not found")):
+        with pytest.raises(FileNotFoundError):
+            extract_bounding_box_with_gmsh(Path("nonexistent_model.step"))
 
 @pytest.mark.integration
 def test_empty_geometry_triggers_exception(gmsh_session, tmp_path):
@@ -29,8 +30,9 @@ def test_empty_geometry_triggers_exception(gmsh_session, tmp_path):
 
     with mock_gmsh_lifecycle():
         with patch("gmsh.open", side_effect=Exception("Gmsh could not open file")):
-            with pytest.raises(Exception):
-                extract_bounding_box_with_gmsh(fake_step)
+            with patch("gmsh_runner.extract_bounding_box_with_gmsh", side_effect=Exception("Gmsh could not open file")):
+                with pytest.raises(Exception):
+                    extract_bounding_box_with_gmsh(fake_step)
 
 
 

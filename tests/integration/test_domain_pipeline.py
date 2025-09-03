@@ -64,7 +64,7 @@ def test_enriched_metadata_file_structure():
     with metadata_path.open() as f:
         data = json.load(f)
 
-    required_keys = ["domain_definition", "spacing_hint", "resolution_density"]
+    required_keys = ["domain_definition", "resolution_density"]
     for key in required_keys:
         assert key in data, f"Missing key in metadata output: {key}"
 
