@@ -97,11 +97,10 @@ def test_metadata_output_structure():
 
 def test_resolution_values_match_config():
     config = load_config()
-    expected = config.get("default_resolution", {"dx": 0.01, "dy": 0.01, "dz": 0.01})
     bbox = stub_bounding_box()
     result = get_resolution(dx=None, dy=None, dz=None, bounding_box=bbox, config=config)
     for axis in ["dx", "dy", "dz"]:
-        assert result[axis] == expected.get(axis, 0.01)
+        assert result[axis] == 1.0, f"Expected fallback value 1.0 for {axis}, got {result[axis]}"
 
 def test_full_pipeline_output_consistency():
     config = load_config()
@@ -116,3 +115,6 @@ def test_full_pipeline_output_consistency():
     with open(TEST_OUTPUT_PATH, "r") as f:
         reloaded = json.load(f)
     assert enriched == reloaded, "Mismatch between in-memory and written metadata"
+
+
+

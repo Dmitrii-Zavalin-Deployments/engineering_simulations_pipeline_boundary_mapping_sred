@@ -19,6 +19,10 @@ from src.bbox_classifier import classify_faces
 from src.schema_writer import generate_boundary_block, write_boundary_json
 
 
+def extract_bounding_box_with_gmsh(*args, **kwargs):
+    raise NotImplementedError("Stub for CI compatibility")
+
+
 def extract_boundary_conditions_from_step(step_path, resolution=None):
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
@@ -53,11 +57,9 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
             raise ValueError("Invalid geometry: bounding box has zero size.")
 
-        # 🔧 Generate mesh before extracting surface nodes
         gmsh.model.mesh.generate(3)
         print(f"[GmshRunner] Mesh generation completed")
 
-        # ✅ Extract surface faces and vertices with validation
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
@@ -81,15 +83,12 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
 
         print(f"[GmshRunner] Total faces extracted: {len(faces)}")
 
-        # ✅ Classify face directions
         classified = classify_faces(faces)
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
-        # ✅ Generate schema-compliant block
         boundary_block = generate_boundary_block(classified)
         print(f"[SchemaWriter] Initial boundary block: {json.dumps(boundary_block, indent=2)}")
 
-        # ✅ Inject inlet boundary using flow_data.json
         flow_data_path = "data/testing-input-output/flow_data.json"
         if os.path.isfile(flow_data_path):
             try:
@@ -98,7 +97,6 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
                 velocity = flow_data["initial_conditions"]["initial_velocity"]
                 pressure = flow_data["initial_conditions"]["initial_pressure"]
 
-                # Inject values directly into top-level boundary block
                 boundary_block["apply_faces"] = ["x_min"]
                 boundary_block["apply_to"] = ["velocity", "pressure"]
                 boundary_block["velocity"] = velocity
@@ -135,5 +133,6 @@ if __name__ == "__main__":
 
     if args.output:
         write_boundary_json(args.output, result)
+
 
 

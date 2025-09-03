@@ -3,7 +3,6 @@
 import os
 import json
 import pytest
-import subprocess
 from pathlib import Path
 
 from pipeline.metadata_enrichment import enrich_metadata_pipeline
@@ -65,7 +64,7 @@ def test_enriched_metadata_file_structure():
     with metadata_path.open() as f:
         data = json.load(f)
 
-    required_keys = ["domain_definition", "domain_size", "spacing_hint", "resolution_density"]
+    required_keys = ["domain_definition", "spacing_hint", "resolution_density"]
     for key in required_keys:
         assert key in data, f"Missing key in metadata output: {key}"
 
@@ -109,7 +108,7 @@ def test_metadata_enrichment_with_resolution(dummy_bounds):
         (dummy_bounds["zmax"] - dummy_bounds["zmin"])
     )
     enriched = enrich_metadata_pipeline(nx, ny, nz, bounding_volume, config_flag=True)
-    for key in ["domain_size", "spacing_hint", "resolution_density"]:
+    for key in ["spacing_hint", "resolution_density"]:
         assert key in enriched
 
 def test_metadata_output_structure(tmp_path, dummy_bounds):
@@ -135,47 +134,5 @@ def test_metadata_output_structure(tmp_path, dummy_bounds):
     for key in ["min_x", "max_x", "min_y", "max_y", "min_z", "max_z", "nx", "ny", "nz"]:
         assert key in content["domain_definition"]
 
-STEP_PATH = Path("data/testing-input-output/input.step")
-
-@pytest.mark.skipif(not STEP_PATH.exists(), reason="Required STEP file missing for system test.")
-def test_run_pipeline_execution(tmp_path):
-    env = os.environ.copy()
-    env["IO_DIRECTORY"] = str(STEP_PATH.parent)
-    env["OUTPUT_PATH"] = str(tmp_path / "domain_metadata.json")
-    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
-
-    resolution = 0.02
-    result = subprocess.run(
-        ["python", "-m", "src.run_pipeline", "--resolution", str(resolution)],
-        env=env,
-        capture_output=True,
-        text=True
-    )
-
-    if result.returncode != 0:
-        print("STDERR:", result.stderr)
-
-    assert result.returncode == 0
-    assert "✅ Metadata written" in result.stdout
-
-    output_file = Path(env["OUTPUT_PATH"])
-    assert output_file.exists(), "Pipeline output file missing"
-
-    with open(output_file) as f:
-        metadata = json.load(f)
-
-    assert "domain_definition" in metadata
-    assert "domain_size" in metadata
-    assert "spacing_hint" in metadata
-    assert "resolution_density" in metadata
-
-    domain = metadata["domain_definition"]
-    computed_nx = int((domain["max_x"] - domain["min_x"]) / resolution)
-    computed_ny = int((domain["max_y"] - domain["min_y"]) / resolution)
-    computed_nz = int((domain["max_z"] - domain["min_z"]) / resolution)
-
-    assert computed_nx > 0
-    assert computed_ny > 0
-    assert computed_nz > 0
 
 

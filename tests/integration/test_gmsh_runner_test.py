@@ -1,8 +1,6 @@
 # tests/integration/test_gmsh_runner_test.py
 
 import pytest
-pytest.skip("Skipping due to missing extract_bounding_box_with_gmsh", allow_module_level=True)
-
 from pathlib import Path
 from unittest.mock import patch
 from gmsh_runner import extract_bounding_box_with_gmsh

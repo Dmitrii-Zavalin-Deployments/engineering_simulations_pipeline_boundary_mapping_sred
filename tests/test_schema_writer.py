@@ -4,6 +4,8 @@ import unittest
 import tempfile
 import os
 import json
+import pytest
+import jsonschema
 from src.schema_writer import generate_boundary_block, validate_boundary_conditions, write_boundary_json
 
 class TestSchemaWriter(unittest.TestCase):
@@ -44,8 +46,9 @@ class TestSchemaWriter(unittest.TestCase):
                 # ❌ Missing "faces"
             }
         }
-        with self.assertRaises(Exception):
-            generate_boundary_block(malformed)
+        block = generate_boundary_block(malformed)
+        with pytest.raises(jsonschema.ValidationError):
+            validate_boundary_conditions(block)
 
     def test_missing_apply_faces_field(self):
         malformed = {
@@ -56,8 +59,9 @@ class TestSchemaWriter(unittest.TestCase):
                 # ❌ Missing "apply_faces"
             }
         }
-        with self.assertRaises(Exception):
-            generate_boundary_block(malformed)
+        block = generate_boundary_block(malformed)
+        with pytest.raises(jsonschema.ValidationError):
+            validate_boundary_conditions(block)
 
     def test_write_boundary_json(self):
         block = generate_boundary_block(self.valid_classified)
@@ -77,7 +81,7 @@ class TestSchemaWriter(unittest.TestCase):
         invalid_block = generate_boundary_block(self.valid_classified)
         invalid_block["type"] = "unsupported_type"  # ❌ Not allowed by schema
 
-        with self.assertRaises(Exception):
+        with pytest.raises(jsonschema.ValidationError):
             validate_boundary_conditions(invalid_block)
 
 if __name__ == "__main__":
