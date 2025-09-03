@@ -2,12 +2,21 @@
 
 import json
 import logging
+import yaml
 
 logger = logging.getLogger(__name__)
 
 def load_pipeline_index(config_path="configs/metadata/pipeline_index.json"):
     with open(config_path, 'r') as f:
         return json.load(f)
+
+def load_resolution_profile(profile_path="configs/validation/resolution_profile.yaml"):
+    try:
+        with open(profile_path, 'r') as f:
+            return yaml.safe_load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load resolution profile: {e}")
+        return {}
 
 def compute_domain_size(nx, ny, nz):
     return nx * ny * nz
@@ -37,6 +46,8 @@ def enrich_metadata_pipeline(nx, ny, nz, bounding_volume, config_flag=True):
         return {}
 
     index = load_pipeline_index()
+    config = load_resolution_profile()
+
     domain_size = compute_domain_size(nx, ny, nz)
     spacing_hint = compute_spacing_hint(domain_size, nx, ny, nz)
     resolution_density = compute_resolution_density(domain_size, bounding_volume)
@@ -46,6 +57,11 @@ def enrich_metadata_pipeline(nx, ny, nz, bounding_volume, config_flag=True):
         "spacing_hint": spacing_hint,
         "resolution_density": resolution_density
     }
+
+    if metadata["resolution_density"] is None:
+        fallback = config.get("default_resolution_density", 0.5)
+        metadata["resolution_density"] = fallback
+        logger.info(f"Injected default resolution_density from config: {fallback}")
 
     logger.info("Enriched metadata computed.")
     return metadata

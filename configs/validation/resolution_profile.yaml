@@ -3,5 +3,7 @@ default_resolution:
   dy: 0.1
   dz: 0.1
 
+default_resolution_density: 0.5
+
 
 
