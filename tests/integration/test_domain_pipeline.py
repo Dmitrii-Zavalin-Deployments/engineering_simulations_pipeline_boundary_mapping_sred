@@ -65,10 +65,10 @@ def test_enriched_metadata_file_structure():
         data = json.load(f)
 
     assert "domain_definition" in data, "Missing domain_definition in metadata output"
-    if "resolution_density" in data:
-        assert isinstance(data["resolution_density"], (int, float))
-    else:
+    resolution_density = data.get("resolution_density", None)
+    if resolution_density is None:
         pytest.skip("resolution_density missing; skipping assertion")
+    assert isinstance(resolution_density, (int, float))
 
 def test_validate_bounding_box_success(dummy_bounds):
     assert validate_bounding_box(dummy_bounds) is True

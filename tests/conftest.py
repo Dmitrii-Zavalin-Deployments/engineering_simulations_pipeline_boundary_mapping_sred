@@ -2,10 +2,15 @@
 
 import sys
 import pathlib
+import os
 import pytest
 import gmsh
 import yaml
 from unittest.mock import patch, mock_open
+
+# ✅ Centralized CI detection utility
+def is_ci():
+    return os.getenv("CI", "false").lower() == "true"
 
 # Adds src/ directory to sys.path for all tests
 SRC_PATH = pathlib.Path(__file__).resolve().parents[1] / "src"

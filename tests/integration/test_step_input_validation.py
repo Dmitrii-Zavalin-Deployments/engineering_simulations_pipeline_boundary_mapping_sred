@@ -16,7 +16,7 @@ def test_step_file_exists_and_is_valid_format():
     assert STEP_FILE_PATH.suffix == ".step", "Incorrect file extension"
 
 @pytest.mark.integration
-@pytest.mark.skipif(skip_ci, reason="Stubbed for CI compatibility")
+@pytest.mark.skipif(skip_ci, reason="Gmsh integration mocked; skipping in CI")
 def test_step_file_importable_by_gmsh():
     """Ensure Gmsh can import and initialize the test STEP file."""
     mock_result = {
@@ -34,7 +34,7 @@ def test_step_file_importable_by_gmsh():
         "Bounding box extraction keys missing"
 
 @pytest.mark.integration
-@pytest.mark.skipif(skip_ci, reason="Stubbed for CI compatibility")
+@pytest.mark.skipif(skip_ci, reason="Resolution scaling mocked; skipping in CI")
 def test_step_file_resolution_scaling():
     """Verify extracted grid resolution varies with input scaling."""
     coarse_result = {
@@ -47,9 +47,9 @@ def test_step_file_resolution_scaling():
         coarse = extract_bounding_box_with_gmsh(STEP_FILE_PATH, resolution=0.05)
         fine = extract_bounding_box_with_gmsh(STEP_FILE_PATH, resolution=0.005)
 
-    assert fine["nx"] > coarse["nx"]
-    assert fine["ny"] > coarse["ny"]
-    assert fine["nz"] > coarse["nz"]
+    assert fine["nx"] > coarse["nx"], "nx scaling failed"
+    assert fine["ny"] > coarse["ny"], "ny scaling failed"
+    assert fine["nz"] > coarse["nz"], "nz scaling failed"
 
 
 

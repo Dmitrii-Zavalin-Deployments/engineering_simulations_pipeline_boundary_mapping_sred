@@ -47,6 +47,12 @@ jobs:
           pip freeze
           pip check
 
+      - name: 🧪 Confirm Gmsh availability for tests
+        run: |
+          echo "🔍 Checking Gmsh CLI and Python bindings..."
+          gmsh -version || { echo "❌ Gmsh CLI not found"; exit 1; }
+          python -c "import gmsh; gmsh.initialize(); gmsh.finalize(); print('✅ Gmsh Python bindings operational')" || { echo "❌ Gmsh Python bindings failed"; exit 1; }
+
       - name: 🧹 Clear simulation output artifacts
         run: |
           rm -rf "$GITHUB_WORKSPACE/data/testing-input-output/"*
@@ -161,5 +167,6 @@ jobs:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
+
 
 
