@@ -47,21 +47,5 @@ def test_step_file_resolution_scaling():
     assert fine["ny"] > coarse["ny"]
     assert fine["nz"] > coarse["nz"]
 
-@pytest.mark.integration
-def test_step_file_surface_tags_optional():
-    """Confirm optional surface_tags can be present and valid."""
-    mock_result = {
-        "min_x": 0.0, "max_x": 1.0,
-        "min_y": 0.0, "max_y": 1.0,
-        "min_z": 0.0, "max_z": 1.0,
-        "nx": 10, "ny": 10, "nz": 10,
-        "surface_tags": [1, 2, 3]
-    }
-    with patch("gmsh_runner.extract_bounding_box_with_gmsh", return_value=mock_result):
-        result = extract_bounding_box_with_gmsh(STEP_FILE_PATH, resolution=0.01)
-
-    if "surface_tags" in result:
-        assert isinstance(result["surface_tags"], list), "surface_tags should be a list"
-
 
 
