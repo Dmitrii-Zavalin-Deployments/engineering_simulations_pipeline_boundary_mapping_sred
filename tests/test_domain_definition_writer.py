@@ -53,11 +53,6 @@ def test_invalid_bounds_trigger_exception(axis, min_val, max_val):
     "min_x", "max_x", "min_y", "max_y", "min_z", "max_z"
 ])
 def test_missing_keys_trigger_exception(missing_key):
-    """
-    Tests whether validate_domain_bounds raises DomainValidationError
-    when domain keys are missing. Exception messages are validated
-    by expected axis ('x', 'y', 'z') identification.
-    """
     domain = {
         "min_x": 0.0, "max_x": 1.0,
         "min_y": 0.0, "max_y": 1.0,
@@ -99,10 +94,10 @@ def test_payload_matches_schema(domain_schema):
         "x_min": "wall", "x_max": "wall",
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
-        "faces": ["x_min", "y_max"],
-        "type": "dirichlet",  # ✅ Updated to valid enum value
-        "apply_faces": True,
-        "apply_to": "fluid",
+        "faces": [0, 1],
+        "type": "dirichlet",
+        "apply_faces": ["x_min", "y_max"],
+        "apply_to": ["pressure", "velocity"],
         "pressure": 101325,
         "velocity": [0.0, 0.0, 0.0],
         "no_slip": True
@@ -120,10 +115,10 @@ def test_missing_keys_trigger_validation_error(domain_schema, key):
         "x_min": "wall", "x_max": "wall",
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
-        "faces": ["x_min", "y_max"],
-        "type": "dirichlet",  # ✅ Updated to valid enum value
-        "apply_faces": True,
-        "apply_to": "fluid",
+        "faces": [0, 1],
+        "type": "dirichlet",
+        "apply_faces": ["x_min", "y_max"],
+        "apply_to": ["pressure", "velocity"],
         "pressure": 101325,
         "velocity": [0.0, 0.0, 0.0],
         "no_slip": True
@@ -140,10 +135,10 @@ def test_nested_payload_structure_rejected(domain_schema):
             "x_min": "wall", "x_max": "wall",
             "y_min": "wall", "y_max": "wall",
             "z_min": "wall", "z_max": "wall",
-            "faces": ["x_min", "y_max"],
-            "type": "dirichlet",  # ✅ Updated to valid enum value
-            "apply_faces": True,
-            "apply_to": "fluid",
+            "faces": [0, 1],
+            "type": "dirichlet",
+            "apply_faces": ["x_min", "y_max"],
+            "apply_to": ["pressure", "velocity"],
             "pressure": 101325,
             "velocity": [0.0, 0.0, 0.0],
             "no_slip": True
@@ -158,10 +153,10 @@ def test_extra_properties_rejected(domain_schema):
         "x_min": "wall", "x_max": "wall",
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
-        "faces": ["x_min", "y_max"],
-        "type": "dirichlet",  # ✅ Updated to valid enum value
-        "apply_faces": True,
-        "apply_to": "fluid",
+        "faces": [0, 1],
+        "type": "dirichlet",
+        "apply_faces": ["x_min", "y_max"],
+        "apply_to": ["pressure", "velocity"],
         "pressure": 101325,
         "velocity": [0.0, 0.0, 0.0],
         "no_slip": True,
