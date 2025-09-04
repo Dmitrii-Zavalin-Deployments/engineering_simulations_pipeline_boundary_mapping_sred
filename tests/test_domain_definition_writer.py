@@ -100,7 +100,7 @@ def test_payload_matches_schema(domain_schema):
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
         "faces": ["x_min", "y_max"],
-        "type": "boundary",
+        "type": "dirichlet",  # ✅ Updated to valid enum value
         "apply_faces": True,
         "apply_to": "fluid",
         "pressure": 101325,
@@ -121,7 +121,7 @@ def test_missing_keys_trigger_validation_error(domain_schema, key):
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
         "faces": ["x_min", "y_max"],
-        "type": "boundary",
+        "type": "dirichlet",  # ✅ Updated to valid enum value
         "apply_faces": True,
         "apply_to": "fluid",
         "pressure": 101325,
@@ -141,7 +141,7 @@ def test_nested_payload_structure_rejected(domain_schema):
             "y_min": "wall", "y_max": "wall",
             "z_min": "wall", "z_max": "wall",
             "faces": ["x_min", "y_max"],
-            "type": "boundary",
+            "type": "dirichlet",  # ✅ Updated to valid enum value
             "apply_faces": True,
             "apply_to": "fluid",
             "pressure": 101325,
@@ -159,7 +159,7 @@ def test_extra_properties_rejected(domain_schema):
         "y_min": "wall", "y_max": "wall",
         "z_min": "wall", "z_max": "wall",
         "faces": ["x_min", "y_max"],
-        "type": "boundary",
+        "type": "dirichlet",  # ✅ Updated to valid enum value
         "apply_faces": True,
         "apply_to": "fluid",
         "pressure": 101325,
