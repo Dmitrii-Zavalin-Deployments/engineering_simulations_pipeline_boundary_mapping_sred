@@ -96,54 +96,76 @@ def test_extremely_large_float_bounds():
 
 def test_payload_matches_schema(domain_schema):
     payload = {
-        "domain_definition": {
-            "min_x": 0.0, "max_x": 3.0,
-            "min_y": 0.0, "max_y": 1.0,
-            "min_z": 0.0, "max_z": 1.0,
-            "nx": 3, "ny": 2, "nz": 1
-        }
+        "x_min": "wall", "x_max": "wall",
+        "y_min": "wall", "y_max": "wall",
+        "z_min": "wall", "z_max": "wall",
+        "faces": ["x_min", "y_max"],
+        "type": "boundary",
+        "apply_faces": True,
+        "apply_to": "fluid",
+        "pressure": 101325,
+        "velocity": [0.0, 0.0, 0.0],
+        "no_slip": True
     }
 
     validate(instance=payload, schema=domain_schema)
     assert True
 
 @pytest.mark.parametrize("key", [
-    "min_x", "max_x", "min_y", "max_y", "min_z", "max_z", "nx", "ny", "nz"
+    "x_min", "x_max", "y_min", "y_max", "z_min", "z_max",
+    "faces", "type", "apply_faces", "apply_to", "pressure", "velocity", "no_slip"
 ])
 def test_missing_keys_trigger_validation_error(domain_schema, key):
-    domain = {
-        "min_x": 0.0, "max_x": 3.0,
-        "min_y": 0.0, "max_y": 1.0,
-        "min_z": 0.0, "max_z": 1.0,
-        "nx": 3, "ny": 2, "nz": 1
+    payload = {
+        "x_min": "wall", "x_max": "wall",
+        "y_min": "wall", "y_max": "wall",
+        "z_min": "wall", "z_max": "wall",
+        "faces": ["x_min", "y_max"],
+        "type": "boundary",
+        "apply_faces": True,
+        "apply_to": "fluid",
+        "pressure": 101325,
+        "velocity": [0.0, 0.0, 0.0],
+        "no_slip": True
     }
-    domain.pop(key)
-    payload = { "domain_definition": domain }
+    payload.pop(key)
 
     with pytest.raises(ValidationError) as exc:
         validate(instance=payload, schema=domain_schema)
     assert key in str(exc.value)
 
-def test_flat_payload_structure_rejected(domain_schema):
-    flat_payload = {
-        "min_x": 0.0, "max_x": 3.0,
-        "min_y": 0.0, "max_y": 1.0,
-        "min_z": 0.0, "max_z": 1.0,
-        "nx": 3, "ny": 2, "nz": 1
+def test_nested_payload_structure_rejected(domain_schema):
+    nested_payload = {
+        "domain_definition": {
+            "x_min": "wall", "x_max": "wall",
+            "y_min": "wall", "y_max": "wall",
+            "z_min": "wall", "z_max": "wall",
+            "faces": ["x_min", "y_max"],
+            "type": "boundary",
+            "apply_faces": True,
+            "apply_to": "fluid",
+            "pressure": 101325,
+            "velocity": [0.0, 0.0, 0.0],
+            "no_slip": True
+        }
     }
 
     with pytest.raises(ValidationError):
-        validate(instance=flat_payload, schema=domain_schema)
+        validate(instance=nested_payload, schema=domain_schema)
 
 def test_extra_properties_rejected(domain_schema):
     payload = {
-        "domain_definition": {
-            "min_x": 0.0, "max_x": 3.0,
-            "min_y": 0.0, "max_y": 1.0,
-            "min_z": 0.0, "max_z": 1.0,
-            "nx": 3, "ny": 2, "nz": 1,
-            "extra": 99
-        }
+        "x_min": "wall", "x_max": "wall",
+        "y_min": "wall", "y_max": "wall",
+        "z_min": "wall", "z_max": "wall",
+        "faces": ["x_min", "y_max"],
+        "type": "boundary",
+        "apply_faces": True,
+        "apply_to": "fluid",
+        "pressure": 101325,
+        "velocity": [0.0, 0.0, 0.0],
+        "no_slip": True,
+        "extra": "unexpected"
     }
 
     with pytest.raises(ValidationError):
