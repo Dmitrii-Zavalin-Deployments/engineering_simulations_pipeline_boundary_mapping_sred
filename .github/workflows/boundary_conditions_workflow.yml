@@ -181,5 +181,20 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
 
+      - name: 📝 Log trigger for STEP processor
+        run: |
+          echo "$(date '+%Y-%m-%d %H:%M:%S'): STEP processor triggered by '${{ github.actor }}' via '${{ github.event_name }}' event" >> trigger.txt
+
+      - name: 🚀 Commit and push trigger log
+        env:
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+          git add trigger.txt
+          git commit -m "Log STEP processor trigger by ${{ github.actor }} via ${{ github.event_name }}"
+          git push
+
 
 
