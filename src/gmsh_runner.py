@@ -51,7 +51,6 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
             raise ValueError("Invalid geometry: bounding box has zero size.")
 
-        # Create slicing box to split geometry
         box_dx = (max_x - min_x) / 2
         box = gmsh.model.occ.addBox(min_x, min_y, min_z, box_dx, max_y - min_y, max_z - min_z)
         gmsh.model.occ.synchronize()
@@ -107,6 +106,10 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         classified = classify_faces(faces)
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
+        # ✅ Filter apply_faces to match schema
+        allowed_faces = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
+        classified["apply_faces"] = [f for f in classified.get("apply_faces", []) if f in allowed_faces]
+
         boundary_block = generate_boundary_block(classified)
 
         # ✅ Inject flow data
@@ -130,10 +133,6 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
                 print(f"[GmshRunner] Failed to inject inlet boundary: {e}")
         else:
             print(f"[GmshRunner] flow_data.json not found. Skipping inlet injection.")
-
-        # ✅ Filter apply_faces to match schema
-        allowed_faces = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
-        boundary_block["apply_faces"] = [f for f in boundary_block.get("apply_faces", []) if f in allowed_faces]
 
         print(f"[SchemaWriter] Final boundary block: {json.dumps(boundary_block, indent=2)}")
 
