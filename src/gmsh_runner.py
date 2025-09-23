@@ -52,7 +52,7 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.model.occ.synchronize()
 
         # 🧠 Surface classification
-        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180., includeBoundary=True)
+        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
         gmsh.model.mesh.createGeometry()
 
         # 📏 Mesh resolution and tolerances
