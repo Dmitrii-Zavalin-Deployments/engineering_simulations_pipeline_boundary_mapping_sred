@@ -76,8 +76,12 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.open(str(step_path))
         print(f"[GmshRunner] STEP file opened")
 
+        # 🧼 Geometry healing and cleanup
         gmsh.model.occ.removeAllDuplicates()
         gmsh.model.occ.synchronize()
+        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
+        gmsh.model.mesh.createGeometry()
+        gmsh.option.setNumber("Geometry.Tolerance", 1e-6)
 
         volumes = gmsh.model.getEntities(3)
         if not volumes:
@@ -104,7 +108,7 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
             gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 1)
             gmsh.option.setNumber("Mesh.MeshSizeFactor", 1.0)
             gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
-            gmsh.option.setNumber("Mesh.Algorithm", 6)
+            gmsh.option.setNumber("Mesh.Algorithm3D", 1)  # MeshAdapt for robustness
 
             try:
                 gmsh.model.mesh.generate(3)
