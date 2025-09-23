@@ -55,11 +55,11 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
         gmsh.model.mesh.createGeometry()
 
-        # 📏 Mesh resolution and tolerances
+        # 📏 Mesh resolution
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
         gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
-        gmsh.option.setNumber("Mesh.ToleranceEdge", 1e-6)
-        gmsh.option.setNumber("Mesh.ToleranceFacet", 1e-6)
+        gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)  # Optional: smoother curves
+        gmsh.option.setNumber("Mesh.Algorithm", 6)  # Optional: Delaunay 3D
 
         volumes = gmsh.model.getEntities(3)
         print(f"[GmshRunner] Volume entities: {volumes}")
