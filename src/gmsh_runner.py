@@ -49,7 +49,10 @@ def generate_resolution_sweep(min_dim, wall_thickness=None, geometry_type="solid
 
 
 def evaluate_mesh_quality():
-    qualities = gmsh.model.mesh.getElementQualities()
+    types, elementTags, _ = gmsh.model.mesh.getElements(3)
+    if not elementTags or not elementTags[0]:
+        return {"min": 0.0, "avg": 0.0, "std": 0.0}
+    qualities = gmsh.model.mesh.getElementQualities(elementTags[0])
     return {
         "min": round(min(qualities), 4),
         "avg": round(sum(qualities) / len(qualities), 4),
@@ -116,7 +119,9 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         with open("geometry_resolution_advice.json", "w") as f:
             json.dump({"resolution_candidates": sweep, "quality_metrics": results}, f, indent=2)
 
-        # Proceed with last successful mesh
+        # 🛡️ Ensure surface mesh is generated before extracting nodes
+        gmsh.model.mesh.generate(2)
+
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
