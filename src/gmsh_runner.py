@@ -1,3 +1,28 @@
+# src/gmsh_runner.py
+
+# -------------------------------------------------------------------
+# Gmsh-based geometry processor for STEP domain boundary condition extraction
+# -------------------------------------------------------------------
+
+try:
+    import gmsh
+except ImportError:
+    raise RuntimeError("Gmsh module not found. Run: pip install gmsh==4.11.1")
+
+import json
+import os
+import numpy as np
+
+from src.utils.gmsh_input_check import validate_step_has_volumes
+from src.utils.input_validation import load_resolution_profile
+from src.bbox_classifier import classify_faces
+from src.schema_writer import generate_boundary_block, write_boundary_json
+
+
+def extract_bounding_box_with_gmsh(*args, **kwargs):
+    raise NotImplementedError("Stub for CI compatibility")
+
+
 def extract_boundary_conditions_from_step(step_path, resolution=None):
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
@@ -113,6 +138,24 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
     finally:
         gmsh.finalize()
         print(f"[GmshRunner] Gmsh finalized")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
+    parser.add_argument("--step", type=str, required=True, help="Path to STEP file")
+    parser.add_argument("--resolution", type=float, help="Grid resolution in meters")
+    parser.add_argument("--output", type=str, help="Path to write boundary_conditions JSON")
+
+    args = parser.parse_args()
+
+    result = extract_boundary_conditions_from_step(args.step, resolution=args.resolution)
+
+    print(json.dumps(result, indent=2))
+
+    if args.output:
+        write_boundary_json(args.output, result)
 
 
 
