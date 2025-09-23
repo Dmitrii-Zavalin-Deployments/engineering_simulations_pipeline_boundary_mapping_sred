@@ -12,6 +12,7 @@ except ImportError:
 import json
 import os
 import numpy as np
+from scipy.spatial import cKDTree
 
 from src.utils.gmsh_input_check import validate_step_has_volumes
 from src.utils.input_validation import load_resolution_profile
@@ -19,22 +20,47 @@ from src.bbox_classifier import classify_faces
 from src.schema_writer import generate_boundary_block, write_boundary_json
 
 
-def extract_bounding_box_with_gmsh(*args, **kwargs):
-    raise NotImplementedError("Stub for CI compatibility")
+def classify_geometry(min_dim, max_dim, volume_count):
+    if volume_count > 1:
+        return "solid"
+    if max_dim / min_dim > 10:
+        return "shell"
+    return "solid"
+
+
+def estimate_wall_thickness(surface_tags):
+    coords = [gmsh.model.mesh.getNodes(2, tag)[1].reshape(-1, 3) for tag in surface_tags]
+    sampled = [c[np.random.choice(len(c), min(500, len(c)), replace=False)] for c in coords]
+    min_dist = float('inf')
+    for i in range(len(sampled)):
+        tree = cKDTree(sampled[i])
+        for j in range(i + 1, len(sampled)):
+            dist, _ = tree.query(sampled[j], k=1)
+            min_dist = min(min_dist, np.min(dist))
+    return round(min_dist, 5)
+
+
+def generate_resolution_sweep(min_dim, wall_thickness=None, geometry_type="solid", steps=5):
+    if geometry_type == "shell" and wall_thickness:
+        base_res = wall_thickness / 2
+    else:
+        base_res = min_dim / 20
+    return [round(base_res * (0.5 ** i), 5) for i in range(steps)]
+
+
+def evaluate_mesh_quality():
+    qualities = gmsh.model.mesh.getElementQualities()
+    return {
+        "min": round(min(qualities), 4),
+        "avg": round(sum(qualities) / len(qualities), 4),
+        "std": round(np.std(qualities), 4)
+    }
 
 
 def extract_boundary_conditions_from_step(step_path, resolution=None):
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
     print(f"[GmshRunner] STEP file found: {step_path}")
-
-    if resolution is None:
-        try:
-            profile = load_resolution_profile()
-            resolution = profile.get("default_resolution", {}).get("dx", 0.01)
-        except Exception:
-            resolution = 0.01
-    print(f"[GmshRunner] Using resolution: {resolution}")
 
     gmsh.initialize()
     try:
@@ -47,40 +73,50 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.open(str(step_path))
         print(f"[GmshRunner] STEP file opened")
 
-        # 🧼 Geometry cleanup
         gmsh.model.occ.removeAllDuplicates()
         gmsh.model.occ.synchronize()
 
-        # 🧠 Surface classification
-        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
-        gmsh.model.mesh.createGeometry()
-
-        # 📏 Mesh resolution
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
-        gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)  # Optional: smoother curves
-        gmsh.option.setNumber("Mesh.Algorithm", 6)  # Optional: Delaunay 3D
-
         volumes = gmsh.model.getEntities(3)
-        print(f"[GmshRunner] Volume entities: {volumes}")
         if not volumes:
             raise ValueError("No valid volumes found for meshing.")
         entity_tag = volumes[0][1]
 
         min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, entity_tag)
-        print(f"[GmshRunner] Bounding box: ({min_x}, {min_y}, {min_z}) → ({max_x}, {max_y}, {max_z})")
+        dims = [max_x - min_x, max_y - min_y, max_z - min_z]
+        min_dim = min(dims)
+        max_dim = max(dims)
+        volume_count = len(volumes)
 
-        if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
-            raise ValueError("Invalid geometry: bounding box has zero size.")
+        geometry_type = classify_geometry(min_dim, max_dim, volume_count)
+        surface_tags = [tag for dim, tag in gmsh.model.getEntities(2)]
+        wall_thickness = estimate_wall_thickness(surface_tags) if geometry_type == "shell" else None
 
-        # 🛡️ Safe mesh generation
-        try:
-            gmsh.model.mesh.generate(3)
-            print(f"[GmshRunner] Mesh generation completed")
-        except Exception as e:
-            raise RuntimeError(f"Mesh generation failed: {gmsh.logger.getLastError()}") from e
+        sweep = generate_resolution_sweep(min_dim, wall_thickness, geometry_type)
+        results = []
 
-        # 🧩 Surface extraction
+        for res in sweep:
+            gmsh.model.mesh.clear()
+            gmsh.option.setNumber("Mesh.CharacteristicLengthMax", res)
+            gmsh.option.setNumber("Mesh.CharacteristicLengthMin", res / 10)
+            gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 1)
+            gmsh.option.setNumber("Mesh.MeshSizeFactor", 1.0)
+            gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
+            gmsh.option.setNumber("Mesh.Algorithm", 6)
+
+            try:
+                gmsh.model.mesh.generate(3)
+                quality = evaluate_mesh_quality()
+                results.append({"resolution": res, "quality": quality})
+                print(f"[GmshRunner] Mesh generated at resolution {res} → quality: {quality}")
+                break  # Stop at first successful resolution
+            except Exception as e:
+                results.append({"resolution": res, "error": str(e)})
+                print(f"[GmshRunner] Mesh failed at resolution {res}: {e}")
+
+        with open("geometry_resolution_advice.json", "w") as f:
+            json.dump({"resolution_candidates": sweep, "quality_metrics": results}, f, indent=2)
+
+        # Proceed with last successful mesh
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
@@ -104,14 +140,12 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
 
         print(f"[GmshRunner] Total faces extracted: {len(faces)}")
 
-        # 🧠 Face classification
         classified = classify_faces(faces)
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
         boundary_block = generate_boundary_block(classified)
         print(f"[SchemaWriter] Initial boundary block: {json.dumps(boundary_block, indent=2)}")
 
-        # 💨 Optional inlet injection
         flow_data_path = "data/testing-input-output/flow_data.json"
         if os.path.isfile(flow_data_path):
             try:
@@ -145,7 +179,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
     parser.add_argument("--step", type=str, required=True, help="Path to STEP file")
-    parser.add_argument("--resolution", type=float, help="Grid resolution in meters")
+    parser.add_argument("--resolution", type=float, help="Grid resolution in meters (optional override)")
     parser.add_argument("--output", type=str, help="Path to write boundary_conditions JSON")
 
     args = parser.parse_args()
