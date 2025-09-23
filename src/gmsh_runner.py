@@ -15,10 +15,6 @@ from src.bbox_classifier import classify_faces
 from src.schema_writer import generate_boundary_block, write_boundary_json
 
 
-def extract_bounding_box_with_gmsh(*args, **kwargs):
-    raise NotImplementedError("Stub for CI compatibility")
-
-
 def extract_boundary_conditions_from_step(step_path, resolution=None):
     if not os.path.isfile(step_path):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
@@ -38,39 +34,45 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.logger.start()
 
         validate_step_has_volumes(step_path)
-        print(f"[GmshRunner] STEP file validated for volumes")
-
         gmsh.open(str(step_path))
-        print(f"[GmshRunner] STEP file opened")
-
         gmsh.model.occ.removeAllDuplicates()
         gmsh.model.occ.synchronize()
-        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
-        gmsh.model.mesh.createGeometry()
 
+        # Get original volumes
+        original_volumes = gmsh.model.getEntities(3)
+        if not original_volumes:
+            raise ValueError("No valid volumes found for meshing.")
+        print(f"[GmshRunner] Original volumes: {original_volumes}")
+
+        # Create slicing box to split geometry
+        min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, original_volumes[0][1])
+        box_dx = (max_x - min_x) / 2
+        box = gmsh.model.occ.addBox(min_x, min_y, min_z, box_dx, max_y - min_y, max_z - min_z)
+        gmsh.model.occ.synchronize()
+
+        # Fragment original volumes with slicing box
+        fragments, _ = gmsh.model.occ.fragment(original_volumes, [(3, box)])
+        gmsh.model.occ.synchronize()
+        print(f"[GmshRunner] Fragmented volumes: {fragments}")
+
+        # Mesh each volume fragment
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
         gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
         gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
         gmsh.option.setNumber("Mesh.Algorithm", 6)
 
-        volumes = gmsh.model.getEntities(3)
-        print(f"[GmshRunner] Volume entities: {volumes}")
-        if not volumes:
-            raise ValueError("No valid volumes found for meshing.")
-        entity_tag = volumes[0][1]
+        for dim, tag in fragments:
+            if dim != 3:
+                continue
+            try:
+                gmsh.model.mesh.generate(3)
+                print(f"[GmshRunner] Mesh generated for volume {tag}")
+                break  # Stop after first successful mesh
+            except Exception as e:
+                print(f"[GmshRunner] Mesh failed for volume {tag}: {e}")
+                continue
 
-        min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, entity_tag)
-        print(f"[GmshRunner] Bounding box: ({min_x}, {min_y}, {min_z}) → ({max_x}, {max_y}, {max_z})")
-
-        if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
-            raise ValueError("Invalid geometry: bounding box has zero size.")
-
-        try:
-            gmsh.model.mesh.generate(3)
-            print(f"[GmshRunner] Mesh generation completed")
-        except Exception as e:
-            raise RuntimeError(f"Mesh generation failed: {gmsh.logger.getLastError()}") from e
-
+        # Extract surface mesh
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
@@ -139,7 +141,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     result = extract_boundary_conditions_from_step(args.step, resolution=args.resolution)
-
     print(json.dumps(result, indent=2))
 
     if args.output:
