@@ -37,42 +37,50 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.open(str(step_path))
         gmsh.model.occ.removeAllDuplicates()
         gmsh.model.occ.synchronize()
+        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
+        gmsh.model.mesh.createGeometry()
 
-        # Get original volumes
-        original_volumes = gmsh.model.getEntities(3)
-        if not original_volumes:
+        volumes = gmsh.model.getEntities(3)
+        if not volumes:
             raise ValueError("No valid volumes found for meshing.")
-        print(f"[GmshRunner] Original volumes: {original_volumes}")
+        print(f"[GmshRunner] Original volumes: {volumes}")
+
+        min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, volumes[0][1])
+        print(f"[GmshRunner] Bounding box: ({min_x}, {min_y}, {min_z}) → ({max_x}, {max_y}, {max_z})")
+
+        if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
+            raise ValueError("Invalid geometry: bounding box has zero size.")
 
         # Create slicing box to split geometry
-        min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, original_volumes[0][1])
         box_dx = (max_x - min_x) / 2
         box = gmsh.model.occ.addBox(min_x, min_y, min_z, box_dx, max_y - min_y, max_z - min_z)
         gmsh.model.occ.synchronize()
 
-        # Fragment original volumes with slicing box
-        fragments, _ = gmsh.model.occ.fragment(original_volumes, [(3, box)])
+        fragments, _ = gmsh.model.occ.fragment(volumes, [(3, box)])
         gmsh.model.occ.synchronize()
         print(f"[GmshRunner] Fragmented volumes: {fragments}")
 
-        # Mesh each volume fragment
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
         gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
         gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
         gmsh.option.setNumber("Mesh.Algorithm", 6)
 
+        meshed = False
         for dim, tag in fragments:
             if dim != 3:
                 continue
             try:
                 gmsh.model.mesh.generate(3)
                 print(f"[GmshRunner] Mesh generated for volume {tag}")
-                break  # Stop after first successful mesh
+                meshed = True
+                break
             except Exception as e:
                 print(f"[GmshRunner] Mesh failed for volume {tag}: {e}")
                 continue
 
-        # Extract surface mesh
+        if not meshed:
+            raise RuntimeError("Mesh generation failed for all fragments.")
+
         faces = []
         surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
@@ -100,8 +108,8 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
         boundary_block = generate_boundary_block(classified)
-        print(f"[SchemaWriter] Initial boundary block: {json.dumps(boundary_block, indent=2)}")
 
+        # ✅ Inject flow data
         flow_data_path = "data/testing-input-output/flow_data.json"
         if os.path.isfile(flow_data_path):
             try:
@@ -115,12 +123,17 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
                 boundary_block["velocity"] = velocity
                 boundary_block["pressure"] = pressure
                 boundary_block["no_slip"] = True
+                boundary_block["type"] = "dirichlet"
 
                 print(f"[GmshRunner] Inlet boundary injected from flow_data.json")
             except Exception as e:
                 print(f"[GmshRunner] Failed to inject inlet boundary: {e}")
         else:
             print(f"[GmshRunner] flow_data.json not found. Skipping inlet injection.")
+
+        # ✅ Filter apply_faces to match schema
+        allowed_faces = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
+        boundary_block["apply_faces"] = [f for f in boundary_block.get("apply_faces", []) if f in allowed_faces]
 
         print(f"[SchemaWriter] Final boundary block: {json.dumps(boundary_block, indent=2)}")
 
