@@ -21,11 +21,12 @@ from src.schema_writer import generate_boundary_block, write_boundary_json
 
 
 def classify_geometry(min_dim, max_dim, volume_count):
-    if volume_count > 1:
+    if volume_count > 1 and max_dim / min_dim < 5:
         return "solid"
-    if max_dim / min_dim > 10:
+    elif max_dim / min_dim > 10:
         return "shell"
-    return "solid"
+    else:
+        return "ambiguous"
 
 
 def estimate_wall_thickness(surface_tags):
@@ -65,6 +66,8 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         raise FileNotFoundError(f"STEP file not found: {step_path}")
     print(f"[GmshRunner] STEP file found: {step_path}")
 
+    max_elements = int(os.getenv("MAX_ELEMENT_COUNT", "10000000"))
+
     gmsh.initialize()
     try:
         gmsh.model.add("domain_model")
@@ -76,7 +79,6 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         gmsh.open(str(step_path))
         print(f"[GmshRunner] STEP file opened")
 
-        # 🧼 Geometry healing and cleanup
         gmsh.model.occ.removeAllDuplicates()
         gmsh.model.occ.synchronize()
         gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
@@ -95,10 +97,12 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         volume_count = len(volumes)
 
         geometry_type = classify_geometry(min_dim, max_dim, volume_count)
+        print(f"[GmshRunner] Geometry classified as: {geometry_type}")
+
         surface_tags = [tag for dim, tag in gmsh.model.getEntities(2)]
         wall_thickness = estimate_wall_thickness(surface_tags) if geometry_type == "shell" else None
 
-        sweep = generate_resolution_sweep(min_dim, wall_thickness, geometry_type)
+        sweep = generate_resolution_sweep(min_dim, wall_thickness, geometry_type, steps=7 if geometry_type == "ambiguous" else 5)
         results = []
 
         for res in sweep:
@@ -108,14 +112,16 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
             gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 1)
             gmsh.option.setNumber("Mesh.MeshSizeFactor", 1.0)
             gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
-            gmsh.option.setNumber("Mesh.Algorithm3D", 1)  # MeshAdapt for robustness
+            gmsh.option.setNumber("Mesh.Algorithm3D", 1)
 
             try:
                 gmsh.model.mesh.generate(3)
                 quality = evaluate_mesh_quality()
-                results.append({"resolution": res, "quality": quality})
-                print(f"[GmshRunner] Mesh generated at resolution {res} → quality: {quality}")
-                break  # Stop at first successful resolution
+                element_count = len(gmsh.model.mesh.getElements(3)[1][0])
+                results.append({"resolution": res, "quality": quality, "element_count": element_count})
+                print(f"[GmshRunner] Mesh at resolution {res} → quality: {quality}, elements: {element_count}")
+                if quality["min"] > 0.05 and element_count < max_elements:
+                    break
             except Exception as e:
                 results.append({"resolution": res, "error": str(e)})
                 print(f"[GmshRunner] Mesh failed at resolution {res}: {e}")
@@ -123,28 +129,31 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         with open("geometry_resolution_advice.json", "w") as f:
             json.dump({"resolution_candidates": sweep, "quality_metrics": results}, f, indent=2)
 
-        # 🛡️ Ensure surface mesh is generated before extracting nodes
-        gmsh.model.mesh.generate(2)
-
         faces = []
-        surface_entities = gmsh.model.getEntities(2)
+        try:
+            surface_entities = gmsh.model.getEntities(2)
+        except Exception as e:
+            print(f"[GmshRunner] Failed to retrieve surface entities: {e}")
+            surface_entities = []
+
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
 
         for dim, tag in surface_entities:
+            bbox = gmsh.model.getBoundingBox(dim, tag)
+            volume = (bbox[3] - bbox[0]) * (bbox[4] - bbox[1]) * (bbox[5] - bbox[2])
             node_data = gmsh.model.mesh.getNodes(dim, tag)
-            coords_raw = node_data[1] if node_data else []
-            print(f"[GmshRunner] Surface {tag} node count: {len(coords_raw)}")
+            node_count = len(node_data[1]) // 3 if node_data else 0
 
-            if coords_raw is not None and len(coords_raw) >= 9:
-                try:
-                    coords = coords_raw.reshape(-1, 3)
-                    face_vertices = coords.tolist()
-                    faces.append({"id": tag, "vertices": face_vertices})
-                except Exception as e:
-                    print(f"[GmshRunner] Failed to reshape nodes for surface {tag}: {e}")
-                    continue
-            else:
-                print(f"[GmshRunner] Skipping surface {tag} due to insufficient node data")
+            if volume < 1e-9 or node_count < 10:
+                print(f"[GmshRunner] Skipping surface {tag} — degenerate or unmeshable")
+                continue
+
+            try:
+                coords = node_data[1].reshape(-1, 3)
+                face_vertices = coords.tolist()
+                faces.append({"id": tag, "vertices": face_vertices})
+            except Exception as e:
+                print(f"[GmshRunner] Failed to reshape nodes for surface {tag}: {e}")
                 continue
 
         print(f"[GmshRunner] Total faces extracted: {len(faces)}")
