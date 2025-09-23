@@ -67,6 +67,7 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
     print(f"[GmshRunner] STEP file found: {step_path}")
 
     max_elements = int(os.getenv("MAX_ELEMENT_COUNT", "10000000"))
+    algorithms_to_try = [1, 4, 5, 6, 7]
 
     gmsh.initialize()
     try:
@@ -104,38 +105,47 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
 
         sweep = generate_resolution_sweep(min_dim, wall_thickness, geometry_type, steps=7 if geometry_type == "ambiguous" else 5)
         results = []
+        algorithm_used = None
 
         for res in sweep:
-            gmsh.model.mesh.clear()
-            gmsh.option.setNumber("Mesh.CharacteristicLengthMax", res)
-            gmsh.option.setNumber("Mesh.CharacteristicLengthMin", res / 10)
-            gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 1)
-            gmsh.option.setNumber("Mesh.MeshSizeFactor", 1.0)
-            gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
-            gmsh.option.setNumber("Mesh.Algorithm3D", 1)
+            for algo in algorithms_to_try:
+                gmsh.model.mesh.clear()
+                gmsh.option.setNumber("Mesh.CharacteristicLengthMax", res)
+                gmsh.option.setNumber("Mesh.CharacteristicLengthMin", res / 10)
+                gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 1)
+                gmsh.option.setNumber("Mesh.MeshSizeFactor", 1.0)
+                gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
+                gmsh.option.setNumber("Mesh.Algorithm3D", algo)
 
-            try:
-                gmsh.model.mesh.generate(3)
-                quality = evaluate_mesh_quality()
-                element_count = len(gmsh.model.mesh.getElements(3)[1][0])
-                results.append({"resolution": res, "quality": quality, "element_count": element_count})
-                print(f"[GmshRunner] Mesh at resolution {res} → quality: {quality}, elements: {element_count}")
-                if quality["min"] > 0.05 and element_count < max_elements:
-                    break
-            except Exception as e:
-                results.append({"resolution": res, "error": str(e)})
-                print(f"[GmshRunner] Mesh failed at resolution {res}: {e}")
+                try:
+                    gmsh.model.mesh.generate(3)
+                    quality = evaluate_mesh_quality()
+                    element_count = len(gmsh.model.mesh.getElements(3)[1][0])
+                    results.append({
+                        "resolution": res,
+                        "algorithm": algo,
+                        "quality": quality,
+                        "element_count": element_count
+                    })
+                    print(f"[GmshRunner] Mesh succeeded with algorithm {algo} at resolution {res} → quality: {quality}")
+                    if quality["min"] > 0.05 and element_count < max_elements:
+                        algorithm_used = algo
+                        break
+                except Exception as e:
+                    results.append({"resolution": res, "algorithm": algo, "error": str(e)})
+                    print(f"[GmshRunner] Algorithm {algo} failed at resolution {res}: {e}")
+            if algorithm_used is not None:
+                break
 
         with open("geometry_resolution_advice.json", "w") as f:
-            json.dump({"resolution_candidates": sweep, "quality_metrics": results}, f, indent=2)
+            json.dump({
+                "resolution_candidates": sweep,
+                "quality_metrics": results,
+                "algorithm_used": algorithm_used
+            }, f, indent=2)
 
         faces = []
-        try:
-            surface_entities = gmsh.model.getEntities(2)
-        except Exception as e:
-            print(f"[GmshRunner] Failed to retrieve surface entities: {e}")
-            surface_entities = []
-
+        surface_entities = gmsh.model.getEntities(2)
         print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
 
         for dim, tag in surface_entities:
