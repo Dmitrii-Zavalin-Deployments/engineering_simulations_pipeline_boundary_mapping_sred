@@ -106,7 +106,7 @@ def extract_boundary_conditions_from_step(step_path, resolution=None):
         classified = classify_faces(faces)
         print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
 
-        # ✅ Filter apply_faces to match schema
+        # ✅ Filter apply_faces to match schema BEFORE block generation
         allowed_faces = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
         classified["apply_faces"] = [f for f in classified.get("apply_faces", []) if f in allowed_faces]
 
