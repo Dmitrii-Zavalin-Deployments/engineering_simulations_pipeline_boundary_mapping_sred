@@ -17,7 +17,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
     for tag in surfaces:
         face_id = tag[1]
-        normal = gmsh.model.getNormal(dim, face_id, [0.5, 0.5, 0.5])  # sample center
+        normal = gmsh.model.getNormal(dim, face_id)
         if not normal or len(normal) != 3:
             continue
 
