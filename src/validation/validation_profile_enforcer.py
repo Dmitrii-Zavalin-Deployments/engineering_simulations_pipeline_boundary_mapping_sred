@@ -14,11 +14,9 @@ profile_check_enabled = os.getenv("PROFILE_CHECK_ENABLED", "false").lower() == "
 
 class ValidationProfileError(Exception):
     """Raised when a validation profile rule fails."""
-    pass
 
 class ProfileValidationError(Exception):
     """Raised when profile loading fails due to structure or content issues."""
-    pass
 
 def load_profile(path: str) -> dict:
     """

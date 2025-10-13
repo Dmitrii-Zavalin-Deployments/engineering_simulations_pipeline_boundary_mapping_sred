@@ -5,7 +5,6 @@ from src.rules.config import debug_log  # ✅ Strategic Addition
 
 class RuleConfigError(Exception):
     """Raised when validation rule configuration cannot be parsed properly."""
-    pass
 
 def load_rule_profile(path: str) -> list:
     """

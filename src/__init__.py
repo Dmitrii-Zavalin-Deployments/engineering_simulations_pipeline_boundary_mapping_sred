@@ -7,7 +7,6 @@ No runtime logic is needed here unless explicit package-level initialization is 
 """
 
 # ✅ Explicit exposure for modular imports
-from . import bbox_classifier
 
 
 

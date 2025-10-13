@@ -4,7 +4,6 @@ import re
 
 class OperatorError(Exception):
     """Raised when an unsupported or malformed operator is invoked."""
-    pass
 
 # 🔗 Centralized operator function definitions
 def op_eq(a, b): return a == b

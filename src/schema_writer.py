@@ -3,7 +3,7 @@
 import json
 import os
 from typing import Dict, Any
-from jsonschema import validate, ValidationError
+from jsonschema import validate
 
 # ✅ Path to schema definition
 SCHEMA_PATH = os.path.join("schemas", "domain_schema.json")

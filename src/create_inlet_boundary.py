@@ -3,7 +3,6 @@
 import json
 import argparse
 import sys
-from pathlib import Path
 
 def load_flow_data(flow_data_path):
     try:

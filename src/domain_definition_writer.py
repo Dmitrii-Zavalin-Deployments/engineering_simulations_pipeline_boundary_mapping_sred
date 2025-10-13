@@ -12,7 +12,6 @@ from typing import Dict
 
 class DomainValidationError(Exception):
     """Custom exception raised when domain bounds are inconsistent."""
-    pass
 
 
 def validate_domain_bounds(domain: Dict) -> None:

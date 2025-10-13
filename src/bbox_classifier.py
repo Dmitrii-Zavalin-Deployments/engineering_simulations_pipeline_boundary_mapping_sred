@@ -77,7 +77,7 @@ def classify_faces(faces: List[Dict]) -> Dict:
     """
     thresholds = CONFIG.get("directional_thresholds", {"x": 0.85, "y": 0.85, "z": 0.85})
     boundary_map = CONFIG.get("default_boundary_map", {})
-    allow_multiple = CONFIG.get("allow_multiple_faces_per_direction", True)
+    CONFIG.get("allow_multiple_faces_per_direction", True)
     verbose = CONFIG.get("log_classification_details", False)
     enable_clustering = CONFIG.get("enable_fallback_clustering", True)
 

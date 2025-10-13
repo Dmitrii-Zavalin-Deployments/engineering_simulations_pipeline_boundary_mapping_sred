@@ -17,7 +17,6 @@ except ImportError:
 
 class ValidationError(Exception):
     """Raised when STEP file validation fails."""
-    pass
 
 
 def validate_step_has_volumes(step_path):
