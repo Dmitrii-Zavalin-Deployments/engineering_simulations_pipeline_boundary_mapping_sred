@@ -1,42 +1,74 @@
+# src/boundary_conditions.py
+
 import gmsh
 import math
+import numpy as np
 
 def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, resolution=None, debug=False):
     gmsh.open(step_path)
+    if debug:
+        print(f"[DEBUG] Opened STEP file: {step_path}")
 
-    # Extract all faces from the geometry
     dim = 2  # surface dimension
     surfaces = gmsh.model.getEntities(dim)
+    if debug:
+        print(f"[DEBUG] Extracted {len(surfaces)} surface entities")
+
     boundary_conditions = []
 
-    # Normalize velocity vector
     vmag = math.sqrt(sum(v**2 for v in velocity))
     if vmag == 0:
         raise ValueError("Initial velocity vector cannot be zero.")
     velocity_unit = [v / vmag for v in velocity]
+    if debug:
+        print(f"[DEBUG] Normalized velocity vector: {velocity_unit}")
 
     for tag in surfaces:
         face_id = tag[1]
-        normal = gmsh.model.getNormal(dim, face_id)
-        if not normal or len(normal) != 3:
+        if debug:
+            print(f"[DEBUG] Processing face ID: {face_id}")
+
+        try:
+            node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
+            if debug:
+                print(f"[DEBUG] Retrieved {len(node_tags)} nodes for face {face_id}")
+        except Exception as e:
+            if debug:
+                print(f"[DEBUG] Failed to get nodes for face {face_id}: {e}")
             continue
 
-        # Normalize face normal
-        nmag = math.sqrt(sum(n**2 for n in normal))
+        if len(node_coords) < 9:
+            if debug:
+                print(f"[DEBUG] Skipping face {face_id}: insufficient node coordinates")
+            continue
+
+        p1 = np.array(node_coords[0:3])
+        p2 = np.array(node_coords[3:6])
+        p3 = np.array(node_coords[6:9])
+        v1 = p2 - p1
+        v2 = p3 - p1
+        normal = np.cross(v1, v2)
+        nmag = np.linalg.norm(normal)
         if nmag == 0:
+            if debug:
+                print(f"[DEBUG] Skipping face {face_id}: degenerate normal")
             continue
-        normal_unit = [n / nmag for n in normal]
+        normal_unit = (normal / nmag).tolist()
+        if debug:
+            print(f"[DEBUG] Computed normal for face {face_id}: {normal_unit}")
 
-        # Dot product to classify
         dot = sum(v * n for v, n in zip(velocity_unit, normal_unit))
         role = "wall"
         if dot > 0.95:
             role = "inlet"
         elif dot < -0.95:
             role = "outlet"
+        if debug:
+            print(f"[DEBUG] Classified face {face_id} as: {role}")
 
-        # Determine face label
         face_label = classify_face_label(normal_unit)
+        if debug:
+            print(f"[DEBUG] Assigned face label: {face_label}")
 
         block = {
             "role": role,
@@ -47,10 +79,9 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             "velocity": velocity if role in ["inlet", "wall"] else None,
             "pressure": pressure if role == "inlet" else None,
             "no_slip": no_slip if role == "wall" else None,
-            "comment": f"{role.capitalize()} face aligned with normal {normal_unit}"
+            "comment": f"Defines {role} flow parameters based on face normal"
         }
 
-        # Remove unused fields
         if block["velocity"] is None:
             del block["velocity"]
         if block["pressure"] is None:
@@ -59,16 +90,17 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             del block["no_slip"]
 
         boundary_conditions.append(block)
+        if debug:
+            print(f"[DEBUG] Appended boundary block for face {face_id}: {block}")
 
     if debug:
-        print("[DEBUG] Boundary condition blocks:")
+        print("[DEBUG] Final boundary condition blocks:")
         for b in boundary_conditions:
             print(b)
 
     return boundary_conditions
 
 def classify_face_label(normal):
-    # Heuristic mapping based on axis alignment
     axis = ["x", "y", "z"]
     max_index = max(range(3), key=lambda i: abs(normal[i]))
     direction = "min" if normal[max_index] < 0 else "max"
