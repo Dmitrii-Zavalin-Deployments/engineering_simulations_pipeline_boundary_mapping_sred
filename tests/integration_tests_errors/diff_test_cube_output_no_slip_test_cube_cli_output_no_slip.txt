@@ -1,0 +1,126 @@
+❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
+
+--- JSON UNIFIED DIFF (Expected vs Generated) ---
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -4,15 +4,28 @@       "x_min"
+     ],
+     "apply_to": [
+-      "velocity",
+       "pressure"
+     ],
+-    "comment": "Defines inlet flow parameters for velocity and pressure",
++    "comment": "Defines outlet flow parameters based on face normal",
+     "faces": [
+       1
+     ],
+-    "pressure": 101325,
+-    "role": "inlet",
++    "role": "outlet",
++    "type": "neumann"
++  },
++  {
++    "apply_faces": [
++      "y_max"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Defines wall flow parameters based on face normal",
++    "faces": [
++      2
++    ],
++    "no_slip": true,
++    "role": "wall",
+     "type": "dirichlet",
+     "velocity": [
+       1.0,
+@@ -25,32 +38,78 @@       "x_max"
+     ],
+     "apply_to": [
++      "velocity",
+       "pressure"
+     ],
+-    "comment": "Defines outlet flow behavior with pressure gradient",
++    "comment": "Defines inlet flow parameters based on face normal",
+     "faces": [
+-      2
++      3
+     ],
+-    "role": "outlet",
+-    "type": "neumann"
++    "pressure": 101325.0,
++    "role": "inlet",
++    "type": "dirichlet",
++    "velocity": [
++      1.0,
++      0.0,
++      0.0
++    ]
+   },
+   {
+-    "apply_faces": [],
++    "apply_faces": [
++      "y_max"
++    ],
+     "apply_to": [
+       "velocity"
+     ],
+-    "comment": "Defines near-wall flow parameters with no-slip condition",
++    "comment": "Defines wall flow parameters based on face normal",
+     "faces": [
+-      3,
+-      4,
+-      5,
++      4
++    ],
++    "no_slip": true,
++    "role": "wall",
++    "type": "dirichlet",
++    "velocity": [
++      1.0,
++      0.0,
++      0.0
++    ]
++  },
++  {
++    "apply_faces": [
++      "z_min"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Defines wall flow parameters based on face normal",
++    "faces": [
++      5
++    ],
++    "no_slip": true,
++    "role": "wall",
++    "type": "dirichlet",
++    "velocity": [
++      1.0,
++      0.0,
++      0.0
++    ]
++  },
++  {
++    "apply_faces": [
++      "z_max"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Defines wall flow parameters based on face normal",
++    "faces": [
+       6
+     ],
+     "no_slip": true,
+     "role": "wall",
+     "type": "dirichlet",
+     "velocity": [
+-      0.0,
++      1.0,
+       0.0,
+       0.0
+     ]
+-------------------------------------------------
+
+--- Commit Details: Run 18480628153 / Attempt 1 ---
