@@ -1,17 +1,33 @@
-{
-  "geometry_mask_flat": [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-  ],
-  "geometry_mask_shape": [4, 4, 4],
-  "mask_encoding": {
-    "fluid": 1,
-    "solid": 0
+[
+  {
+    "role": "inlet",
+    "type": "dirichlet",
+    "apply_faces": ["x_min"],
+    "faces": [1],
+    "apply_to": ["velocity", "pressure"],
+    "velocity": [1.0, 0.0, 0.0],
+    "pressure": 101325,
+    "comment": "Defines inlet flow parameters for velocity and pressure"
   },
-  "flattening_order": "x-major"
-}
+  {
+    "role": "outlet",
+    "type": "neumann",
+    "apply_faces": ["x_max"],
+    "faces": [2],
+    "apply_to": ["pressure"],
+    "comment": "Defines outlet flow behavior with pressure gradient"
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "apply_faces": [],
+    "faces": [3, 4, 5, 6],
+    "apply_to": ["velocity"],
+    "velocity": [0.0, 0.0, 0.0],
+    "no_slip": true,
+    "comment": "Defines near-wall flow parameters with no-slip condition"
+  }
+]
 
 
 
