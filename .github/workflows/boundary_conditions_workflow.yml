@@ -282,12 +282,18 @@ jobs:
           resolution=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['default_resolution'])")
           flow_region=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['flow_region'])")
           no_slip=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['no_slip'])")
-      
+          vx=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][0])")
+          vy=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][1])")
+          vz=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][2])")
+          pressure=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['pressure'])")
+
           python3 src/gmsh_runner.py \
             --step data/testing-input-output/input.step \
             --resolution "$resolution" \
             --flow_region "$flow_region" \
             --no_slip "$no_slip" \
+            --initial_velocity "$vx" "$vy" "$vz" \
+            --initial_pressure "$pressure" \
             --output data/testing-input-output/boundary_conditions_gmsh.json \
             --debug
 
