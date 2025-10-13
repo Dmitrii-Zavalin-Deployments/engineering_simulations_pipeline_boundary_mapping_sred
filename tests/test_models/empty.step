@@ -1,0 +1,13 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Empty STEP placeholder'),'2;1');
+FILE_NAME('empty.step','20250728','','','','','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));
+ENDSEC;
+
+DATA;
+ENDSEC;
+END-ISO-10303-21;
+
+
+
