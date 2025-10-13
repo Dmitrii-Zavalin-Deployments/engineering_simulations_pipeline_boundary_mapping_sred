@@ -9,6 +9,16 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if debug:
         print(f"[DEBUG] Opened STEP file: {step_path}")
 
+    if resolution:
+        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
+        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
+        if debug:
+            print(f"[DEBUG] Mesh resolution set to: {resolution}")
+
+    gmsh.model.mesh.generate(3)
+    if debug:
+        print("[DEBUG] 3D mesh generated")
+
     dim = 2  # surface dimension
     surfaces = gmsh.model.getEntities(dim)
     if debug:
@@ -92,6 +102,67 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         boundary_conditions.append(block)
         if debug:
             print(f"[DEBUG] Appended boundary block for face {face_id}: {block}")
+
+    # ✅ Fallback logic for solid internal flow
+    has_inlet = any(b["role"] == "inlet" for b in boundary_conditions)
+    has_outlet = any(b["role"] == "outlet" for b in boundary_conditions)
+
+    if flow_region == "internal" and not has_inlet and not has_outlet:
+        if debug:
+            print("[DEBUG] No inlet/outlet detected — applying fallback for solid internal flow")
+
+        inlet_label = "x_min"
+        outlet_label = "x_max"
+
+        for tag in surfaces:
+            face_id = tag[1]
+            node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
+            if len(node_coords) < 9:
+                continue
+
+            p1 = np.array(node_coords[0:3])
+            p2 = np.array(node_coords[3:6])
+            p3 = np.array(node_coords[6:9])
+            v1 = p2 - p1
+            v2 = p3 - p1
+            normal = np.cross(v1, v2)
+            nmag = np.linalg.norm(normal)
+            if nmag == 0:
+                continue
+            normal_unit = (normal / nmag).tolist()
+            face_label = classify_face_label(normal_unit)
+
+            if face_label == inlet_label:
+                boundary_conditions.append({
+                    "role": "inlet",
+                    "type": "dirichlet",
+                    "apply_faces": [inlet_label],
+                    "faces": [face_id],
+                    "apply_to": ["velocity", "pressure"],
+                    "velocity": velocity,
+                    "pressure": pressure,
+                    "comment": "Defines inlet flow parameters for velocity and pressure"
+                })
+            elif face_label == outlet_label:
+                boundary_conditions.append({
+                    "role": "outlet",
+                    "type": "neumann",
+                    "apply_faces": [outlet_label],
+                    "faces": [face_id],
+                    "apply_to": ["pressure"],
+                    "comment": "Defines outlet flow behavior with pressure gradient"
+                })
+            else:
+                boundary_conditions.append({
+                    "role": "wall",
+                    "type": "dirichlet",
+                    "apply_faces": [],
+                    "faces": [face_id],
+                    "apply_to": ["velocity"],
+                    "velocity": [0.0, 0.0, 0.0],
+                    "no_slip": no_slip,
+                    "comment": "Defines near-wall flow parameters with no-slip condition"
+                })
 
     if debug:
         print("[DEBUG] Final boundary condition blocks:")
