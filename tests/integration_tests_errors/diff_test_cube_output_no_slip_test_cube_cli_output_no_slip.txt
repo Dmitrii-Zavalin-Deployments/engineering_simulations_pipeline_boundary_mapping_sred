@@ -39,11 +39,8 @@
      ],
      "apply_to": [
        "velocity",
-@@ -9,9 +41,9 @@     ],
-     "comment": "Defines inlet flow parameters for velocity and pressure",
-     "faces": [
--      1
-+      3
+@@ -11,7 +43,7 @@     "faces": [
+       3
      ],
 -    "pressure": 101325,
 +    "pressure": 101325.0,
@@ -66,7 +63,7 @@
      ],
 -    "comment": "Defines outlet flow behavior with pressure gradient",
 -    "faces": [
--      2
+-      1
 -    ],
 -    "role": "outlet",
 -    "type": "neumann"
@@ -84,7 +81,7 @@
 @@ -40,9 +75,23 @@     ],
      "comment": "Defines near-wall flow parameters with no-slip condition",
      "faces": [
--      3,
+-      2,
 -      4,
 -      5,
 +      5
@@ -109,4 +106,4 @@
      "no_slip": true,
 -------------------------------------------------
 
---- Commit Details: Run 18480895059 / Attempt 1 ---
+--- Commit Details: Run 18481044884 / Attempt 1 ---
