@@ -64,12 +64,10 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         else:
             face_roles[face_id] = ("wall", None)
 
-    has_inlet = any(role == "inlet" for role, _ in face_roles.values())
-    has_outlet = any(role == "outlet" for role, _ in face_roles.values())
-
-    if flow_region == "internal" and not has_inlet and not has_outlet:
+    # ✅ Always enforce fallback for internal flow
+    if flow_region == "internal":
         if debug:
-            print("[DEBUG] No inlet/outlet detected — applying fallback for solid internal flow")
+            print("[DEBUG] Enforcing fallback inlet/outlet roles for internal flow")
 
         for tag in surfaces:
             face_id = tag[1]
@@ -91,8 +89,12 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
             if face_label == "x_min":
                 face_roles[face_id] = ("inlet", "x_min")
+                if debug:
+                    print(f"[DEBUG] Fallback assigned inlet to face {face_id} (x_min)")
             elif face_label == "x_max":
                 face_roles[face_id] = ("outlet", "x_max")
+                if debug:
+                    print(f"[DEBUG] Fallback assigned outlet to face {face_id} (x_max)")
             else:
                 face_roles[face_id] = ("wall", None)
 
