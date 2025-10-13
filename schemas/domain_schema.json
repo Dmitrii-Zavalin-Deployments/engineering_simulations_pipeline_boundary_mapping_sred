@@ -2,94 +2,75 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yourdomain.org/schemas/boundary_conditions_schema.json",
   "title": "Boundary Conditions Schema",
-  "description": "Schema for validating boundary condition metadata in simulation pipelines.",
-  "type": "object",
-  "required": [
-    "x_min", "x_max",
-    "y_min", "y_max",
-    "z_min", "z_max",
-    "faces", "type",
-    "apply_faces", "apply_to",
-    "pressure", "velocity",
-    "no_slip"
-  ],
-  "properties": {
-    "x_min": {
-      "type": "string",
-      "description": "Boundary condition on the minimum x face"
-    },
-    "x_max": {
-      "type": "string",
-      "description": "Boundary condition on the maximum x face"
-    },
-    "y_min": {
-      "type": "string",
-      "description": "Boundary condition on the minimum y face"
-    },
-    "y_max": {
-      "type": "string",
-      "description": "Boundary condition on the maximum y face"
-    },
-    "z_min": {
-      "type": "string",
-      "description": "Boundary condition on the minimum z face"
-    },
-    "z_max": {
-      "type": "string",
-      "description": "Boundary condition on the maximum z face"
-    },
-    "faces": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "description": "List of face IDs associated with boundary conditions"
-    },
-    "type": {
-      "type": "string",
-      "enum": ["dirichlet", "neumann", "robin"],
-      "description": "Type of boundary condition"
-    },
-    "apply_faces": {
-      "type": "array",
-      "items": {
+  "description": "Schema for validating boundary condition metadata in simulation pipelines. Requires inlet, outlet, and wall definitions.",
+  "type": "array",
+  "minItems": 3,
+  "items": {
+    "type": "object",
+    "required": ["role", "type", "apply_faces", "apply_to", "faces"],
+    "properties": {
+      "role": {
         "type": "string",
-        "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+        "enum": ["inlet", "outlet", "wall"],
+        "description": "Semantic role of the boundary condition"
       },
-      "description": "Faces to which the condition is applied"
-    },
-    "apply_to": {
-      "type": "array",
-      "items": {
+      "type": {
         "type": "string",
-        "enum": ["pressure", "velocity", "temperature"]
+        "enum": ["dirichlet", "neumann", "robin"],
+        "description": "Type of boundary condition"
       },
-      "description": "Physical quantities affected by the condition"
-    },
-    "pressure": {
-      "type": "number",
-      "minimum": -1e6,
-      "maximum": 1e6,
-      "description": "Pressure value for the boundary condition (Pa)"
-    },
-    "velocity": {
-      "type": "array",
-      "items": {
+      "apply_faces": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+        },
+        "description": "Faces to which the condition is applied"
+      },
+      "faces": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "description": "List of face IDs associated with boundary conditions"
+      },
+      "apply_to": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["pressure", "velocity", "temperature"]
+        },
+        "description": "Physical quantities affected by the condition"
+      },
+      "pressure": {
         "type": "number",
-        "minimum": -1000,
-        "maximum": 1000
+        "minimum": -1e6,
+        "maximum": 1e6,
+        "description": "Pressure value for the boundary condition (Pa)"
       },
-      "minItems": 3,
-      "maxItems": 3,
-      "description": "Velocity vector [vx, vy, vz] in m/s"
+      "velocity": {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "minimum": -1000,
+          "maximum": 1000
+        },
+        "minItems": 3,
+        "maxItems": 3,
+        "description": "Velocity vector [vx, vy, vz] in m/s"
+      },
+      "no_slip": {
+        "type": "boolean",
+        "description": "Whether the no-slip condition is applied (true = zero tangential velocity)"
+      },
+      "comment": {
+        "type": "string",
+        "description": "Optional human-readable description of the boundary condition"
+      }
     },
-    "no_slip": {
-      "type": "boolean",
-      "description": "Whether the no-slip condition is applied (true = zero tangential velocity)"
-    }
-  },
-  "additionalProperties": false
+    "additionalProperties": false
+  }
 }
 
 
