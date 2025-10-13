@@ -1,3 +1,5 @@
+# src/download_dropbox_files.py
+
 import dropbox
 import os
 import requests
@@ -20,16 +22,6 @@ def refresh_access_token(refresh_token, client_id, client_secret):
         return response.json()["access_token"]
     else:
         raise Exception("❌ Failed to refresh access token")
-
-# Function to delete a file from Dropbox
-def delete_file_from_dropbox(dbx, file_path, log_file):
-    try:
-        dbx.files_delete_v2(file_path)
-        log_file.write(f"Deleted file from Dropbox: {file_path}\n")
-        print(f"🗑️ Deleted file from Dropbox: {file_path}")
-    except Exception as e:
-        log_file.write(f"Failed to delete file: {file_path}, error: {e}\n")
-        print(f"⚠️ Failed to delete file: {file_path}, error: {e}")
 
 # Function to download filtered files and optionally delete them afterwards
 def download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, client_id, client_secret, log_file_path):
@@ -57,12 +49,10 @@ def download_files_from_dropbox(dropbox_folder, local_folder, refresh_token, cli
                         if ext in ALLOWED_EXTENSIONS:
                             local_path = os.path.join(local_folder, entry.name)
                             with open(local_path, "wb") as f:
-                                metadata, res = dbx.files_download(path=entry.path_lower)
+                                _, res = dbx.files_download(path=entry.path_lower)
                                 f.write(res.content)
                             log_file.write(f"✅ Downloaded {entry.name} → {local_path}\n")
                             print(f"✅ Downloaded: {entry.name}")
-                            # Optionally delete after download:
-                            # delete_file_from_dropbox(dbx, entry.path_lower, log_file)
                         else:
                             log_file.write(f"⏭️ Skipped file (unsupported type): {entry.name}\n")
                             print(f"⏭️ Skipped: {entry.name}")

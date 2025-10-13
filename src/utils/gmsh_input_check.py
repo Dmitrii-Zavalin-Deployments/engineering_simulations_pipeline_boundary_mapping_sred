@@ -21,14 +21,13 @@ class ValidationError(Exception):
 
 def validate_step_has_volumes(step_path):
     """
-    Validates that the specified STEP file contains at least one 3D volume entity.
+    Checks if a STEP file contains at least one 3D volume.
 
-    Parameters:
+    Args:
         step_path (str or dict): Either a file path or injected STEP payload (test-only)
 
     Raises:
         FileNotFoundError: If the file path is invalid.
-        ValidationError: If no 3D volume entities are found.
         KeyError: If STEP input dict is malformed.
     """
     import os

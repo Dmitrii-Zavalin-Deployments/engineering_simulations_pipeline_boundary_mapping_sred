@@ -127,25 +127,27 @@ jobs:
           STEP_FILE="tests/test_models/test_cube.step"
           EXPECTED_OUTPUT_PATH="tests/test_models/test_cube_output_no_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/test_cube_cli_output_no_slip.json"
-      
+
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
             echo "❌ Fatal Error: Required file missing. Cannot run integration test."
             exit 1
           fi
-      
+
           echo "--- Running test: test_cube_no_slip ---"
-      
+
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
             --resolution 0.5 \
             --flow_region internal \
             --no_slip true \
-            --output "$TEMP_OUTPUT_FILE" \
-      
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
+
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
-      
+
           echo "✅ Integration test completed for test_cube_no_slip."
-      
+
       # ----------------------------------------------------------------------
       # Integration Test 2: cube_with_hole_no_slip (HARD FAIL on mismatch)
       # ----------------------------------------------------------------------
@@ -155,25 +157,27 @@ jobs:
           STEP_FILE="tests/test_models/cube_with_hole.step"
           EXPECTED_OUTPUT_PATH="tests/test_models/cube_with_hole_internal_output_no_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/cube_with_hole_cli_output_no_slip.json"
-      
+
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
             echo "❌ Fatal Error: Required file missing. Cannot run integration test."
             exit 1
           fi
-      
+
           echo "--- Running test: cube_with_hole_no_slip ---"
-      
+
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
             --resolution 0.5 \
             --flow_region internal \
             --no_slip true \
-            --output "$TEMP_OUTPUT_FILE" \
-      
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
+
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
-      
+
           echo "✅ Integration test completed for cube_with_hole_no_slip."
-      
+
       # ----------------------------------------------------------------------
       # Integration Test 3: test_cube_slip (HARD FAIL on mismatch)
       # ----------------------------------------------------------------------
@@ -183,25 +187,27 @@ jobs:
           STEP_FILE="tests/test_models/test_cube.step"
           EXPECTED_OUTPUT_PATH="tests/test_models/test_cube_output_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/test_cube_cli_output_slip.json"
-      
+
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
             echo "❌ Fatal Error: Required file missing. Cannot run integration test."
             exit 1
           fi
-      
+
           echo "--- Running test: test_cube_slip ---"
-      
+
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
             --resolution 0.5 \
             --flow_region internal \
             --no_slip false \
-            --output "$TEMP_OUTPUT_FILE" \
-      
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
+
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
-      
+
           echo "✅ Integration test completed for test_cube_slip."
-      
+
       # ----------------------------------------------------------------------
       # Integration Test 4: cube_with_hole_slip (HARD FAIL on mismatch)
       # ----------------------------------------------------------------------
@@ -211,25 +217,27 @@ jobs:
           STEP_FILE="tests/test_models/cube_with_hole.step"
           EXPECTED_OUTPUT_PATH="tests/test_models/cube_with_hole_internal_output_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/cube_with_hole_cli_output_slip.json"
-      
+
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
             echo "❌ Fatal Error: Required file missing. Cannot run integration test."
             exit 1
           fi
-      
+
           echo "--- Running test: cube_with_hole_slip ---"
-      
+
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
             --resolution 0.5 \
             --flow_region internal \
             --no_slip false \
-            --output "$TEMP_OUTPUT_FILE" \
-      
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
+
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
-      
+
           echo "✅ Integration test completed for cube_with_hole_slip."
-      
+
       # ----------------------------------------------------------------------
       # Integration Test 5: hollow_cylinder_external_output_slip (HARD FAIL on mismatch)
       # ----------------------------------------------------------------------
@@ -239,24 +247,26 @@ jobs:
           STEP_FILE="tests/test_models/hollow_cylinder.step"
           EXPECTED_OUTPUT_PATH="tests/test_models/hollow_cylinder_external_output_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/hollow_cylinder_cli_output_slip.json"
-      
+
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
             echo "❌ Fatal Error: Required file missing. Cannot run integration test."
             exit 1
           fi
-      
+
           echo "--- Running test: hollow_cylinder_external_output_slip ---"
-      
+
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
             --resolution 0.5 \
             --flow_region external \
             --padding_factor 0 \
             --no_slip false \
-            --output "$TEMP_OUTPUT_FILE" \
-      
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
+
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
-      
+
           echo "✅ Integration test completed for hollow_cylinder_external_output_slip."
 
       - name: 🧪 Run Unit Tests with Coverage

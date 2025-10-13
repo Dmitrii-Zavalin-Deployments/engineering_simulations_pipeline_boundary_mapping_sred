@@ -1,162 +1,109 @@
 # src/gmsh_runner.py
 
-try:
-    import gmsh
-except ImportError:
-    raise RuntimeError("Gmsh module not found. Run: pip install gmsh==4.11.1")
-
+import argparse
 import json
 import os
-import numpy as np
+import gmsh
+from src.gmsh_geometry import extract_geometry_mask
+from src.utils.gmsh_input_check import validate_step_has_volumes, ValidationError
 
-from src.utils.gmsh_input_check import validate_step_has_volumes
-from src.utils.input_validation import load_resolution_profile
-from src.bbox_classifier import classify_faces
-from src.schema_writer import generate_boundary_block, write_boundary_json
+# ✅ Exposed for test patching
+FLOW_DATA_PATH = "data/testing-input-output/flow_data.json"
 
-
-def extract_boundary_conditions_from_step(step_path, resolution=None):
-    if not os.path.isfile(step_path):
-        raise FileNotFoundError(f"STEP file not found: {step_path}")
-    print(f"[GmshRunner] STEP file found: {step_path}")
-
-    if resolution is None:
-        try:
-            profile = load_resolution_profile()
-            resolution = profile.get("default_resolution", {}).get("dx", 0.01)
-        except Exception:
-            resolution = 0.01
-    print(f"[GmshRunner] Using resolution: {resolution}")
-
-    gmsh.initialize()
-    try:
-        gmsh.model.add("domain_model")
-        gmsh.logger.start()
-
-        validate_step_has_volumes(step_path)
-        gmsh.open(str(step_path))
-        gmsh.model.occ.removeAllDuplicates()
-        gmsh.model.occ.synchronize()
-        gmsh.model.mesh.classifySurfaces(angle=30 * np.pi / 180.)
-        gmsh.model.mesh.createGeometry()
-
-        volumes = gmsh.model.getEntities(3)
-        if not volumes:
-            raise ValueError("No valid volumes found for meshing.")
-        print(f"[GmshRunner] Original volumes: {volumes}")
-
-        min_x, min_y, min_z, max_x, max_y, max_z = gmsh.model.getBoundingBox(3, volumes[0][1])
-        print(f"[GmshRunner] Bounding box: ({min_x}, {min_y}, {min_z}) → ({max_x}, {max_y}, {max_z})")
-
-        if (max_x - min_x) <= 0 or (max_y - min_y) <= 0 or (max_z - min_z) <= 0:
-            raise ValueError("Invalid geometry: bounding box has zero size.")
-
-        box_dx = (max_x - min_x) / 2
-        box = gmsh.model.occ.addBox(min_x, min_y, min_z, box_dx, max_y - min_y, max_z - min_z)
-        gmsh.model.occ.synchronize()
-
-        fragments, _ = gmsh.model.occ.fragment(volumes, [(3, box)])
-        gmsh.model.occ.synchronize()
-        print(f"[GmshRunner] Fragmented volumes: {fragments}")
-
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", resolution)
-        gmsh.option.setNumber("Mesh.MinimumCirclePoints", 10)
-        gmsh.option.setNumber("Mesh.Algorithm", 6)
-
-        meshed = False
-        for dim, tag in fragments:
-            if dim != 3:
-                continue
-            try:
-                gmsh.model.mesh.generate(3)
-                print(f"[GmshRunner] Mesh generated for volume {tag}")
-                meshed = True
-                break
-            except Exception as e:
-                print(f"[GmshRunner] Mesh failed for volume {tag}: {e}")
-                continue
-
-        if not meshed:
-            raise RuntimeError("Mesh generation failed for all fragments.")
-
-        faces = []
-        surface_entities = gmsh.model.getEntities(2)
-        print(f"[GmshRunner] Surface entities found: {len(surface_entities)}")
-
-        for dim, tag in surface_entities:
-            node_data = gmsh.model.mesh.getNodes(dim, tag)
-            coords_raw = node_data[1] if node_data else []
-            print(f"[GmshRunner] Surface {tag} node count: {len(coords_raw)}")
-
-            if coords_raw is not None and len(coords_raw) >= 9:
-                try:
-                    coords = coords_raw.reshape(-1, 3)
-                    face_vertices = coords.tolist()
-                    faces.append({"id": tag, "vertices": face_vertices})
-                except Exception as e:
-                    print(f"[GmshRunner] Failed to reshape nodes for surface {tag}: {e}")
-                    continue
-            else:
-                print(f"[GmshRunner] Skipping surface {tag} due to insufficient node data")
-                continue
-
-        print(f"[GmshRunner] Total faces extracted: {len(faces)}")
-
-        classified = classify_faces(faces)
-        print(f"[GmshRunner] Classification result: {json.dumps(classified, indent=2)}")
-
-        # ✅ Filter apply_faces to match schema BEFORE block generation
-        allowed_faces = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
-        classified["apply_faces"] = [f for f in classified.get("apply_faces", []) if f in allowed_faces]
-
-        boundary_block = generate_boundary_block(classified)
-
-        # ✅ Inject flow data
-        flow_data_path = "data/testing-input-output/flow_data.json"
-        if os.path.isfile(flow_data_path):
-            try:
-                with open(flow_data_path, "r") as f:
-                    flow_data = json.load(f)
-                velocity = flow_data["initial_conditions"]["initial_velocity"]
-                pressure = flow_data["initial_conditions"]["initial_pressure"]
-
-                boundary_block["apply_faces"] = ["x_min"]
-                boundary_block["apply_to"] = ["velocity", "pressure"]
-                boundary_block["velocity"] = velocity
-                boundary_block["pressure"] = pressure
-                boundary_block["no_slip"] = True
-                boundary_block["type"] = "dirichlet"
-
-                print(f"[GmshRunner] Inlet boundary injected from flow_data.json")
-            except Exception as e:
-                print(f"[GmshRunner] Failed to inject inlet boundary: {e}")
-        else:
-            print(f"[GmshRunner] flow_data.json not found. Skipping inlet injection.")
-
-        print(f"[SchemaWriter] Final boundary block: {json.dumps(boundary_block, indent=2)}")
-
-        return boundary_block
-    finally:
-        gmsh.finalize()
-        print(f"[GmshRunner] Gmsh finalized")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
+def main():
+    parser = argparse.ArgumentParser(description="Gmsh STEP parser for geometry mask metadata")
     parser.add_argument("--step", type=str, required=True, help="Path to STEP file")
-    parser.add_argument("--resolution", type=float, help="Grid resolution in meters")
-    parser.add_argument("--output", type=str, help="Path to write boundary_conditions JSON")
+    parser.add_argument("--resolution", type=float, help="Grid resolution in millimeters (model units)")
+    parser.add_argument("--flow_region", type=str, choices=["internal", "external"], default="internal", help="Flow context for masking")
+    parser.add_argument("--padding_factor", type=int, default=5, help="Number of voxel layers to pad for external")
+    parser.add_argument("--no_slip", type=lambda x: x.lower() == "true", default=True, help="Boundary condition: no-slip (True) or slip (False)")
+    parser.add_argument("--output", type=str, help="Path to write geometry mask JSON")
+    parser.add_argument("--debug", action="store_true", help="Print full geometry mask structure for debugging")
 
     args = parser.parse_args()
 
-    result = extract_boundary_conditions_from_step(args.step, resolution=args.resolution)
-    print(json.dumps(result, indent=2))
+    print(f"[INFO] Running Gmsh mask extraction with:")
+    print(f"       STEP file       : {args.step}")
+    print(f"       Resolution      : {args.resolution}")
+    print(f"       Flow region     : {args.flow_region}")
+    print(f"       Padding factor  : {args.padding_factor}")
+    print(f"       No-slip         : {args.no_slip}")
+    print(f"       Output path     : {args.output}")
+    print(f"       Debug mode      : {args.debug}")
 
-    if args.output:
-        write_boundary_json(args.output, result)
+    # ✅ Use module-level constant for test patching
+    flow_data_path = FLOW_DATA_PATH
+    if not os.path.isfile(flow_data_path):
+        raise FileNotFoundError(f"Missing flow_data.json at expected location: {flow_data_path}")
+
+    with open(flow_data_path, "r") as f:
+        model_data = json.load(f)
+
+    # Inject CLI overrides
+    model_data["model_properties"]["flow_region"] = args.flow_region
+    model_data["model_properties"]["no_slip"] = args.no_slip
+
+    # Initialize Gmsh and validate STEP file
+    gmsh.initialize()
+    try:
+        validate_step_has_volumes(args.step)
+
+        # Proceed with geometry masking
+        result = extract_geometry_mask(
+            step_path=args.step,
+            resolution=args.resolution,
+            flow_region=args.flow_region,
+            padding_factor=args.padding_factor,
+            no_slip=args.no_slip,
+            model_data=model_data,
+            debug=args.debug
+        )
+
+        # Post-process boundary voxels based on no_slip flag
+        boundary_count = result["geometry_mask_flat"].count(-1)
+        print(f"[DEBUG] Found {boundary_count} boundary voxels (value = -1) before applying no_slip policy.")
+
+        if boundary_count > 0:
+            if args.no_slip:
+                result["geometry_mask_flat"] = [0 if v == -1 else v for v in result["geometry_mask_flat"]]
+                print("[INFO] Boundary voxels reclassified as solid (0) due to no_slip = True.")
+            else:
+                result["geometry_mask_flat"] = [1 if v == -1 else v for v in result["geometry_mask_flat"]]
+                print("[INFO] Boundary voxels reclassified as fluid (1) due to no_slip = False.")
+
+        # Remove boundary from mask_encoding
+        if "boundary" in result["mask_encoding"]:
+            del result["mask_encoding"]["boundary"]
+
+        # Show updated flow region and comment if fallback occurred
+        updated_region = model_data["model_properties"].get("flow_region")
+        region_comment = model_data["model_properties"].get("flow_region_comment", "")
+        print(f"[INFO] Final flow region used: {updated_region}")
+        if region_comment:
+            print(f"[INFO] Flow region comment: {region_comment}")
+
+        print("[INFO] Final geometry mask:")
+        print(json.dumps(result, indent=2))
+
+        if args.output:
+            with open(args.output, "w") as f:
+                json.dump(result, f, indent=2)
+            print(f"[INFO] Geometry mask written to: {args.output}")
+
+    except (FileNotFoundError, ValidationError) as e:
+        raise RuntimeError(f"❌ STEP file validation failed: {e}")
+    except Exception as e:
+        print(f"[ERROR] Unexpected failure: {e}")
+        raise
+    finally:
+        if gmsh.isInitialized():
+            try:
+                gmsh.finalize()
+            except Exception as e:
+                print(f"[WARN] Gmsh finalization error: {e}")
+
+if __name__ == "__main__":
+    main()
 
 
 
