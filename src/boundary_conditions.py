@@ -4,6 +4,47 @@ import gmsh
 import math
 import numpy as np
 
+def classify_face_label(normal, face_id, debug):
+    """
+    Classifies a face based on its outward normal vector, with added debug logging.
+
+    **FIXED LOGIC:** Negative normal component (e.g., -1 in [-1, 0, 0]) maps to MIN.
+    Returns 'x_min', 'y_max', etc. for axis-aligned faces.
+    For non-axis-aligned faces, returns 'wall' (for compliance).
+    """
+    if debug:
+        print(f"[DEBUG_LABEL] Starting classification for Face {face_id} with normal: {normal}")
+
+    axis = ["x", "y", "z"]
+    max_index = max(range(3), key=lambda i: abs(normal[i]))
+    
+    if debug:
+        print(f"[DEBUG_LABEL] Face {face_id}: Max index found: {max_index} ({axis[max_index]}-axis). Max component: {normal[max_index]:.4f}")
+
+    # 1. Robustness Threshold
+    if abs(normal[max_index]) < 0.95:
+        if debug:
+            print(f"[DEBUG_LABEL] Face {face_id}: Threshold FAILED ({abs(normal[max_index]):.4f} < 0.95). Returning 'wall'.")
+        return "wall"
+
+    if debug:
+        print(f"[DEBUG_LABEL] Face {face_id}: Threshold PASSED.")
+
+    # 2. CORRECTED Logic: Negative component -> min, Positive component -> max
+    # This directly fixes the y_min/y_max inversion issue.
+    direction = "min" if normal[max_index] < 0 else "max"
+    
+    if debug:
+        print(f"[DEBUG_LABEL] Face {face_id}: Normal component sign is {'NEGATIVE' if normal[max_index] < 0 else 'POSITIVE'}. Assigned direction: {direction}")
+    
+    result = f"{axis[max_index]}_{direction}"
+    
+    if debug:
+        print(f"[DEBUG_LABEL] Face {face_id}: Final label result: {result}")
+        
+    return result
+
+
 def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, resolution=None, debug=False):
     gmsh.open(step_path)
     if debug:
@@ -53,8 +94,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if debug:
         print(f"[DEBUG] Determined dominant flow axis: {axis_label}, positive direction: {is_positive_flow}")
 
-    # The physics-based check below is ignored when flow_region="internal" 
-    # but is retained for completeness/non-internal regions.
+    # The physics-based check below is retained for completeness/non-internal regions.
     for tag in surfaces:
         face_id = tag[1]
         try:
@@ -75,9 +115,10 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             continue
         normal_unit = (normal / nmag).tolist()
         dot = sum(v * n for v, n in zip(velocity_unit, normal_unit))
-        face_label = classify_face_label(normal_unit)
+        
+        # *** UPDATED CALL ***
+        face_label = classify_face_label(normal_unit, face_id, debug)
 
-        # Corrected Physics Check (Dot < 0 is Inlet, Dot > 0 is Outlet)
         if dot < -0.95:
             face_roles[face_id] = ("inlet", face_label)
         elif dot > 0.95:
@@ -108,7 +149,9 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             if nmag == 0:
                 continue
             normal_unit = (normal / nmag).tolist()
-            face_label = classify_face_label(normal_unit) # Recalculate label using the corrected function
+            
+            # *** UPDATED CALL ***
+            face_label = classify_face_label(normal_unit, face_id, debug)
 
             if face_label.startswith(axis_label + "_"):
                 is_min_face = face_label.endswith("_min")
@@ -172,26 +215,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             print(b)
 
     return boundary_conditions
-
-def classify_face_label(normal):
-    """
-    Classifies a face based on its outward normal vector.
-
-    Returns 'x_min', 'y_max', etc. for axis-aligned faces.
-    For non-axis-aligned faces, returns 'wall' to enforce compliance 
-    and prevent non-descriptive labels in apply_faces.
-    """
-    axis = ["x", "y", "z"]
-    max_index = max(range(3), key=lambda i: abs(normal[i]))
-
-    # 1. Robustness Threshold: If normal is NOT strongly aligned with an axis (< 0.95), 
-    # return the simple role 'wall' as the label.
-    if abs(normal[max_index]) < 0.95:
-        return "wall"
-
-    # 2. Corrected Logic: Negative normal component (e.g., -1 in [-1, 0, 0]) means MINIMUM face (x_min)
-    direction = "min" if normal[max_index] < 0 else "max"
-    return f"{axis[max_index]}_{direction}"
 
 
 
