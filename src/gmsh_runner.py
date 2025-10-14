@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Print full boundary condition structure for debugging")
 
     args = parser.parse_args()
+    args.debug = True  # ✅ Force debug mode ON
 
     print(f"[INFO] Running boundary condition generation with:")
     print(f"       STEP file       : {args.step}")
@@ -38,29 +39,24 @@ def main():
     flow_data_path = FLOW_DATA_PATH
     if not os.path.isfile(flow_data_path):
         raise FileNotFoundError(f"Missing flow_data.json at expected location: {flow_data_path}")
-    if args.debug:
-        print(f"[DEBUG] Found flow_data.json at: {flow_data_path}")
+    print(f"[DEBUG] Found flow_data.json at: {flow_data_path}")
 
     with open(flow_data_path, "r") as f:
         model_data = json.load(f)
-    if args.debug:
-        print(f"[DEBUG] Loaded model_data from flow_data.json")
+    print(f"[DEBUG] Loaded model_data from flow_data.json")
 
     model_data["model_properties"]["flow_region"] = args.flow_region
     model_data["model_properties"]["no_slip"] = args.no_slip
     model_data["initial_conditions"]["velocity"] = args.initial_velocity
     model_data["initial_conditions"]["pressure"] = args.initial_pressure
-    if args.debug:
-        print(f"[DEBUG] Injected CLI overrides into model_data")
+    print(f"[DEBUG] Injected CLI overrides into model_data")
 
     gmsh.initialize()
-    if args.debug:
-        print("[DEBUG] Gmsh initialized")
+    print("[DEBUG] Gmsh initialized")
 
     try:
         validate_step_has_volumes(args.step)
-        if args.debug:
-            print("[DEBUG] STEP file volume validation passed")
+        print("[DEBUG] STEP file volume validation passed")
 
         result = generate_boundary_conditions(
             step_path=args.step,
@@ -71,8 +67,7 @@ def main():
             resolution=args.resolution,
             debug=args.debug
         )
-        if args.debug:
-            print("[DEBUG] Boundary condition generation completed")
+        print("[DEBUG] Boundary condition generation completed")
 
         if not result or not isinstance(result, list):
             raise RuntimeError("❌ Boundary condition generation failed or returned empty result.")
@@ -80,15 +75,13 @@ def main():
         print(f"[INFO] Generated {len(result)} boundary condition blocks.")
         print(f"[INFO] Roles included: {sorted(set(b['role'] for b in result))}")
 
-        if args.debug:
-            print("[DEBUG] Full boundary condition output:")
-            print(json.dumps(result, indent=2))
+        print("[DEBUG] Full boundary condition output:")
+        print(json.dumps(result, indent=2))
 
         with open(args.output, "w") as f:
             json.dump(result, f, indent=2)
         print(f"[INFO] Boundary conditions written to: {args.output}")
-        if args.debug:
-            print(f"[DEBUG] Output file successfully written: {args.output}")
+        print(f"[DEBUG] Output file successfully written: {args.output}")
 
     except (FileNotFoundError, ValidationError) as e:
         raise RuntimeError(f"❌ STEP file validation failed: {e}")
@@ -99,8 +92,7 @@ def main():
         if gmsh.isInitialized():
             try:
                 gmsh.finalize()
-                if args.debug:
-                    print("[DEBUG] Gmsh finalized successfully")
+                print("[DEBUG] Gmsh finalized successfully")
             except Exception as e:
                 print(f"[WARN] Gmsh finalization error: {e}")
 
