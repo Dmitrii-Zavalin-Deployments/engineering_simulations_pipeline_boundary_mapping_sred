@@ -1,7 +1,7 @@
-❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
+❌ INTEGRATION TEST FAILED: Output mismatch for cube_with_hole_internal_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,35 +1,4 @@ [
+--- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -1,35 +1,4 @@ [
 -  {
 -    "apply_faces": [
 -      "x_max"
@@ -44,22 +44,18 @@
      ],
      "pressure": 101325,
      "role": "inlet",
-@@ -52,54 +21,17 @@     ]
+@@ -52,40 +21,9 @@     ]
    },
    {
-+    "apply_faces": [
-+      "x_max"
-+    ],
-     "apply_to": [
+-    "apply_to": [
 -      "velocity"
-+      "pressure"
++    "apply_faces": [
++      "internal_wall"
      ],
 -    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "comment": "Defines outlet flow behavior with pressure gradient",
-     "faces": [
+-    "faces": [
 -      4
-+      3
-     ],
+-    ],
 -    "no_slip": true,
 -    "role": "wall",
 -    "type": "dirichlet",
@@ -87,13 +83,24 @@
 -    ]
 -  },
 -  {
--    "apply_to": [
+     "apply_to": [
+       "velocity"
+     ],
+@@ -104,22 +42,16 @@   },
+   {
+     "apply_faces": [
+-      "cylindrical_surface"
++      "x_max"
+     ],
+     "apply_to": [
 -      "velocity"
--    ],
++      "pressure"
+     ],
 -    "comment": "Defines near-wall flow parameters with no-slip condition",
--    "faces": [
--      6
--    ],
++    "comment": "Defines outlet flow behavior with pressure gradient",
+     "faces": [
+       7
+     ],
 -    "no_slip": true,
 -    "role": "wall",
 -    "type": "dirichlet",
@@ -107,4 +114,4 @@
    }
  ]-------------------------------------------------
 
---- Commit Details: Run 18507004479 / Attempt 1 ---
+--- Commit Details: Run 18507286188 / Attempt 1 ---
