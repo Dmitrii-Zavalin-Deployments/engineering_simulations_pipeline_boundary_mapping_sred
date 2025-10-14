@@ -266,7 +266,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             continue
             
         # The key for grouping should be the role and the descriptive label
-        # In external flow, this will be ('wall', 'wall') for all obstacle faces.
+        # In external flow (for obstacle faces), this will be ('wall', 'wall')
         group_key = (role, face_label)
         
         if group_key not in grouped_blocks:
@@ -364,26 +364,23 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             print(f"[DEBUG_FLOW] Added synthesized Outlet (ID {synthesized_id}) with label {outlet_label}")
         synthesized_id -= 1
 
-        # --- Synthesize Far-Field Walls (Symmetry/Slip Walls) ---
-        far_field_ids = []
+        # --- Synthesize Far-Field Walls (Symmetry/Slip Walls) - SEPARATED BLOCKS ---
         
         for label in perpendicular_axes:
-            far_field_ids.append(synthesized_id)
-            synthesized_id -= 1 # Continue negative sequence
-            
-        # Group all far-field walls into one block for efficiency (common practice)
-        boundary_conditions.append({
-            "role": "wall", # Using 'wall' as a generic far-field/symmetry condition
-            "type": "dirichlet", 
-            "faces": far_field_ids,
-            "apply_to": ["velocity"],
-            "comment": "Synthesized Far-Field Walls/Symmetry (side boundaries of the computational box)",
-            "velocity": [0.0, 0.0, 0.0],
-            "no_slip": no_slip, # <--- **FIXED: Using the `no_slip` parameter**
-            "apply_faces": perpendicular_axes # These are the y_min, y_max, z_min, z_max labels
-        })
-        if debug:
-            print(f"[DEBUG_FLOW] Added synthesized Far-Field Walls (IDs {far_field_ids}) with labels {perpendicular_axes}")
+            # Create a separate block for each far-field face (as requested for consistency)
+            boundary_conditions.append({
+                "role": "wall", 
+                "type": "dirichlet", 
+                "faces": [synthesized_id], # Only one face ID per block
+                "apply_to": ["velocity"],
+                "comment": f"Synthesized Far-Field Wall ({label})",
+                "velocity": [0.0, 0.0, 0.0],
+                "no_slip": no_slip, # Dynamically set by the function parameter
+                "apply_faces": [label]
+            })
+            if debug:
+                print(f"[DEBUG_FLOW] Added synthesized Far-Field Wall (ID {synthesized_id}) with label {label}")
+            synthesized_id -= 1 # Continue negative sequence for the next face
 
 
     if debug:
