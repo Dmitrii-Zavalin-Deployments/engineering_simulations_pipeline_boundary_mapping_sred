@@ -35,14 +35,26 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
     face_roles = {}
 
+    # --- Robust Logic: Determine Flow Axis and Direction ---
     axial_velocity_component = max(abs(v) for v in velocity)
-    axis_index = velocity.index(axial_velocity_component) if axial_velocity_component in velocity else velocity.index(-axial_velocity_component) if -axial_velocity_component in velocity else 0
+    
+    # Safely find the index of the dominant component
+    try:
+        axis_index = velocity.index(axial_velocity_component)
+    except ValueError:
+        try:
+            axis_index = velocity.index(-axial_velocity_component)
+        except ValueError:
+            axis_index = 0 
+            
     axis_label = ["x", "y", "z"][axis_index]
     is_positive_flow = velocity[axis_index] > 0
 
     if debug:
         print(f"[DEBUG] Determined dominant flow axis: {axis_label}, positive direction: {is_positive_flow}")
 
+    # The physics-based check below is ignored when flow_region="internal" 
+    # but is retained for completeness/non-internal regions.
     for tag in surfaces:
         face_id = tag[1]
         try:
@@ -65,6 +77,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         dot = sum(v * n for v, n in zip(velocity_unit, normal_unit))
         face_label = classify_face_label(normal_unit)
 
+        # Corrected Physics Check (Dot < 0 is Inlet, Dot > 0 is Outlet)
         if dot < -0.95:
             face_roles[face_id] = ("inlet", face_label)
         elif dot > 0.95:
@@ -72,6 +85,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         else:
             face_roles[face_id] = ("wall", face_label)
 
+    # --- Robust Internal Flow Logic (Approach 3 Override) ---
     if flow_region == "internal":
         if debug:
             print(f"[DEBUG] Overriding to geometric check for internal flow along {axis_label}-axis.")
@@ -94,7 +108,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             if nmag == 0:
                 continue
             normal_unit = (normal / nmag).tolist()
-            face_label = classify_face_label(normal_unit)
+            face_label = classify_face_label(normal_unit) # Recalculate label using the corrected function
 
             if face_label.startswith(axis_label + "_"):
                 is_min_face = face_label.endswith("_min")
@@ -109,13 +123,18 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                     if debug:
                         print(f"[DEBUG] Assigned OUTLET to face {face_id} ({face_label})")
             else:
+                # Assign role 'wall' and retain the label (which will be 'wall' if non-axis-aligned)
                 face_roles[face_id] = ("wall", face_label)
                 if debug:
                     print(f"[DEBUG] Assigned WALL to face {face_id} ({face_label})")
 
+    # --- Final Boundary Block Construction ---
     for tag in surfaces:
         face_id = tag[1]
         role, face_label = face_roles.get(face_id, ("wall", None))
+
+        # Determine if the label is descriptive (i.e., not the simple 'wall' fallback)
+        is_descriptive_label = face_label and face_label not in ["wall"]
 
         block = {
             "role": role,
@@ -128,17 +147,20 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 "wall": "Defines near-wall flow parameters with no-slip condition"
             }[role]
         }
+        
+        # Construct apply_faces list: only include label if it's descriptive (x_min, y_max, etc.)
+        apply_faces_list = [face_label] if is_descriptive_label else []
 
         if role == "inlet":
             block["velocity"] = velocity
             block["pressure"] = int(pressure)
-            block["apply_faces"] = [face_label] if face_label else []
+            block["apply_faces"] = apply_faces_list
         elif role == "outlet":
-            block["apply_faces"] = [face_label] if face_label else []
+            block["apply_faces"] = apply_faces_list
         elif role == "wall":
             block["velocity"] = [0.0, 0.0, 0.0]
             block["no_slip"] = no_slip
-            block["apply_faces"] = [face_label] if face_label else []
+            block["apply_faces"] = apply_faces_list
 
         boundary_conditions.append(block)
         if debug:
@@ -156,14 +178,18 @@ def classify_face_label(normal):
     Classifies a face based on its outward normal vector.
 
     Returns 'x_min', 'y_max', etc. for axis-aligned faces.
-    For non-axis-aligned faces, returns 'wall' to match your role definitions.
+    For non-axis-aligned faces, returns 'wall' to enforce compliance 
+    and prevent non-descriptive labels in apply_faces.
     """
     axis = ["x", "y", "z"]
     max_index = max(range(3), key=lambda i: abs(normal[i]))
 
+    # 1. Robustness Threshold: If normal is NOT strongly aligned with an axis (< 0.95), 
+    # return the simple role 'wall' as the label.
     if abs(normal[max_index]) < 0.95:
         return "wall"
 
+    # 2. Corrected Logic: Negative normal component (e.g., -1 in [-1, 0, 0]) means MINIMUM face (x_min)
     direction = "min" if normal[max_index] < 0 else "max"
     return f"{axis[max_index]}_{direction}"
 
