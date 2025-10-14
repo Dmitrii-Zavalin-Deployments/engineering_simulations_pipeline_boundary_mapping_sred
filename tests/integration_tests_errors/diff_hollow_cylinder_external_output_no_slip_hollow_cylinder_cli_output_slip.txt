@@ -50,7 +50,7 @@
      ],
      "pressure": 101325,
      "role": "inlet",
-@@ -61,11 +50,37 @@     "apply_to": [
+@@ -61,11 +50,91 @@     "apply_to": [
        "pressure"
      ],
 -    "comment": "Defines outlet flow behavior with pressure gradient",
@@ -64,19 +64,73 @@
 +  },
 +  {
 +    "apply_faces": [
-+      "y_min",
-+      "y_max",
-+      "z_min",
++      "y_min"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Synthesized Far-Field Wall (y_min)",
++    "faces": [
++      -3
++    ],
++    "no_slip": false,
++    "role": "wall",
++    "type": "dirichlet",
++    "velocity": [
++      0.0,
++      0.0,
++      0.0
++    ]
++  },
++  {
++    "apply_faces": [
++      "y_max"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Synthesized Far-Field Wall (y_max)",
++    "faces": [
++      -4
++    ],
++    "no_slip": false,
++    "role": "wall",
++    "type": "dirichlet",
++    "velocity": [
++      0.0,
++      0.0,
++      0.0
++    ]
++  },
++  {
++    "apply_faces": [
++      "z_min"
++    ],
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Synthesized Far-Field Wall (z_min)",
++    "faces": [
++      -5
++    ],
++    "no_slip": false,
++    "role": "wall",
++    "type": "dirichlet",
++    "velocity": [
++      0.0,
++      0.0,
++      0.0
++    ]
++  },
++  {
++    "apply_faces": [
 +      "z_max"
 +    ],
 +    "apply_to": [
 +      "velocity"
 +    ],
-+    "comment": "Synthesized Far-Field Walls/Symmetry (side boundaries of the computational box)",
++    "comment": "Synthesized Far-Field Wall (z_max)",
 +    "faces": [
-+      -3,
-+      -4,
-+      -5,
 +      -6
 +    ],
 +    "no_slip": false,
@@ -90,4 +144,4 @@
    }
  ]-------------------------------------------------
 
---- Commit Details: Run 18509298376 / Attempt 1 ---
+--- Commit Details: Run 18509600982 / Attempt 1 ---
