@@ -329,7 +329,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 "comment": f"Obstacle Wall Face {face_id} with no-slip condition",
                 "velocity": [0.0, 0.0, 0.0],
                 "no_slip": no_slip, 
-                "apply_faces": [f"wall_{face_id}"] # Unique label for individual obstacle faces
+                "apply_faces": "wall"
             }
             boundary_conditions.append(block)
 
