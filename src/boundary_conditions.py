@@ -259,7 +259,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         # Determine if the label is descriptive (i.e., not the simple 'wall' fallback)
         # Note: If face_label is "wall", is_descriptive_label is False, meaning the apply_faces list will be empty ([]).
         # This is fine, as the role is still "wall". We can be slightly more explicit here:
-        is_descriptive_label = face_label and face_label not in ["wall"]
+        face_label and face_label not in ["wall"]
 
         block = {
             "role": role,
