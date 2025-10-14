@@ -1,33 +1,14 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -10,8 +10,26 @@     "faces": [
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -10,6 +10,7 @@     "faces": [
        1
      ],
 +    "pressure": 101325.0,
      "role": "outlet",
      "type": "neumann"
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      2
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
    },
-   {
-     "apply_faces": [
-@@ -25,7 +43,7 @@     "faces": [
+@@ -42,7 +43,7 @@     "faces": [
        3
      ],
 -    "pressure": 101325,
@@ -35,49 +16,6 @@
      "role": "inlet",
      "type": "dirichlet",
      "velocity": [
-@@ -40,9 +58,40 @@     ],
-     "comment": "Defines near-wall flow parameters with no-slip condition",
-     "faces": [
--      2,
--      4,
--      5,
-+      4
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      5
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-       6
-     ],
-     "no_slip": true,
 -------------------------------------------------
 
---- Commit Details: Run 18483521166 / Attempt 1 ---
+--- Commit Details: Run 18489978171 / Attempt 1 ---
