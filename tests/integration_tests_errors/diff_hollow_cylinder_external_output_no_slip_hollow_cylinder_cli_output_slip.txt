@@ -1,11 +1,9 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for hollow_cylinder_external_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- hollow_cylinder_external_output_no_slip.json+++ hollow_cylinder_cli_output_slip.json@@ -1,13 +1,16 @@ [
+--- hollow_cylinder_external_output_no_slip.json+++ hollow_cylinder_cli_output_slip.json@@ -1,13 +1,14 @@ [
    {
-+    "apply_faces": [
-+      "wall_1"
-+    ],
++    "apply_faces": "wall",
      "apply_to": [
        "velocity"
      ],
@@ -19,12 +17,10 @@
      "role": "wall",
      "type": "dirichlet",
      "velocity": [
-@@ -17,14 +20,57 @@     ]
+@@ -17,14 +18,51 @@     ]
    },
    {
-+    "apply_faces": [
-+      "wall_2"
-+    ],
++    "apply_faces": "wall",
      "apply_to": [
        "velocity"
      ],
@@ -44,9 +40,7 @@
 +    ]
 +  },
 +  {
-+    "apply_faces": [
-+      "wall_3"
-+    ],
++    "apply_faces": "wall",
 +    "apply_to": [
 +      "velocity"
 +    ],
@@ -64,9 +58,7 @@
 +    ]
 +  },
 +  {
-+    "apply_faces": [
-+      "wall_4"
-+    ],
++    "apply_faces": "wall",
 +    "apply_to": [
 +      "velocity"
 +    ],
@@ -78,7 +70,7 @@
      "role": "wall",
      "type": "dirichlet",
      "velocity": [
-@@ -41,9 +87,9 @@       "velocity",
+@@ -41,9 +79,9 @@       "velocity",
        "pressure"
      ],
 -    "comment": "Defines inlet flow parameters for velocity and pressure",
@@ -89,7 +81,7 @@
      ],
      "pressure": 101325,
      "role": "inlet",
-@@ -61,11 +107,91 @@     "apply_to": [
+@@ -61,11 +99,91 @@     "apply_to": [
        "pressure"
      ],
 -    "comment": "Defines outlet flow behavior with pressure gradient",
@@ -183,4 +175,4 @@
    }
  ]-------------------------------------------------
 
---- Commit Details: Run 18512734867 / Attempt 1 ---
+--- Commit Details: Run 18512878903 / Attempt 1 ---
