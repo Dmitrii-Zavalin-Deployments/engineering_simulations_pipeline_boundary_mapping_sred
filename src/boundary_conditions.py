@@ -19,8 +19,7 @@ def classify_face_label(normal, face_id, debug):
     max_index = max(range(3), key=lambda i: abs(normal[i]))
     
     if debug:
-        # Reverting index for debug printing consistency, but keeping logic correct
-        # The logic below relies on finding the max_index correctly.
+        # Debug printing consistency
         print(f"[DEBUG_LABEL] Face {face_id}: Max index found: {max_index} ({axis[max_index]}-axis). Max component: {normal[max_index]:.4f}") 
 
     # 1. Robustness Threshold
@@ -46,7 +45,7 @@ def classify_face_label(normal, face_id, debug):
     return result
 
 
-def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, resolution=None, debug=False):
+def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, padding_factor=0, resolution=None, debug=False):
     gmsh.open(step_path)
     if debug:
         print(f"[DEBUG] Opened STEP file: {step_path}")
@@ -65,8 +64,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     surfaces = gmsh.model.getEntities(dim)
     if debug:
         print(f"[DEBUG] Extracted {len(surfaces)} surface entities")
-
-    boundary_conditions = []
 
     vmag = math.sqrt(sum(v**2 for v in velocity))
     if vmag == 0:
@@ -144,39 +141,52 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             face_roles[face_id] = ("outlet", face_label)
         else:
             face_roles[face_id] = ("wall", face_label)
+            
+    # --- Bounding Box Setup (Needed for both internal and external flow) ---
+    bounds = gmsh.model.getBoundingBox(3, 1)
+    if len(bounds) == 7:
+        _, x_min, y_min, z_min, x_max, y_max, z_max = bounds
+    elif len(bounds) == 6:
+        x_min, y_min, z_min, x_max, y_max, z_max = bounds
+    else:
+        # Fallback to extreme values if bounds fail (shouldn't happen)
+        x_min, y_min, z_min, x_max, y_max, z_max = -1e9, -1e9, -1e9, 1e9, 1e9, 1e9
+        
+    # Small tolerance for floating point comparisons
+    TOL = 1e-4 
+    min_bounds = [x_min, y_min, z_min]
+    max_bounds = [x_max, y_max, z_max]
+
 
     # --- Flow Region-Specific Role Override ---
     if flow_region == "external":
-        # For external flow, the object being loaded is the obstacle, 
-        # and ALL of its surfaces are no-slip WALLs.
+        # For external flow, the object being loaded is the obstacle.
         if debug:
             print("[DEBUG_FLOW] EXTERNAL flow selected. Forcing all geometric faces to 'wall'.")
             
+            # Integrate padding factor logic for future domain definition (if padding is used)
+            if padding_factor > 0 and resolution is not None:
+                pad = padding_factor * resolution
+                comp_min_x = x_min - pad
+                comp_min_y = y_min - pad
+                comp_min_z = z_min - pad
+                comp_max_x = x_max + pad
+                comp_max_y = y_max + pad
+                comp_max_z = z_max + pad
+                print(f"[DEBUG] Computational box bounds (Padded): min=({comp_min_x:.3f}, {comp_min_y:.3f}, {comp_min_z:.3f}), max=({comp_max_x:.3f}, {comp_max_y:.3f}, {comp_max_z:.3f})")
+
+            # NOTE: We skip adding Far-Field boundaries here and rely on downstream system to add them, 
+            # but we ensure the OBSTACLE faces are correctly labeled and grouped.
+
         for face_id, data in face_geometry_data.items():
-            # Keep the geometrically determined face_label (x_min, etc.) but force role to "wall"
-            face_roles[face_id] = ("wall", data["face_label"])
+            # Force role to "wall" and label to "wall" for simple grouping
+            face_roles[face_id] = ("wall", "wall")
 
     elif flow_region == "internal":
         # --- Robust Internal Flow Logic (Full Coordinate Override) ---
         if debug:
             print(f"[DEBUG_GEO] FULL Coordinate Override enabled for internal flow along {axis_label}-axis.")
             
-        # Get the global bounding box coordinates from the geometry
-        # FIX FOR ValueError: not enough values to unpack (expected 7, got 6)
-        bounds = gmsh.model.getBoundingBox(3, 1)
-        if len(bounds) == 7:
-            _, x_min, y_min, z_min, x_max, y_max, z_max = bounds
-        elif len(bounds) == 6:
-            x_min, y_min, z_min, x_max, y_max, z_max = bounds
-        else:
-            raise RuntimeError(f"Unexpected number of values from getBoundingBox: {len(bounds)}")
-            
-        # Small tolerance for floating point comparisons
-        TOL = 1e-4 
-        
-        # Mapping of bounds
-        min_bounds = [x_min, y_min, z_min]
-        max_bounds = [x_max, y_max, z_max]
         
         for face_id, data in face_geometry_data.items():
             face_label = data["face_label"]
@@ -220,7 +230,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 else:
                     # Flow Axis, NOT on bounding plane (must be an internal feature wall)
                     role = "wall"
-                    # RENAMED from "internal_wall" to "wall"
                     face_label_fixed = "wall" 
                     if debug:
                         print(f"[DEBUG_GEO] Face {face_id} ({face_label_fixed}): Flow Axis, NOT on bounding plane. Role: {role}")
@@ -235,7 +244,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             else:
                 # 3. Internal Feature Walls (Not on any bounding plane).
                 role = "wall"
-                # RENAMED from "internal_wall" to "wall"
                 face_label_fixed = "wall"
                 if debug:
                     print(f"[DEBUG_GEO] Face {face_id} ({face_label_fixed}): INTERNAL FEATURE. Role: {role}")
@@ -244,58 +252,70 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             face_roles[face_id] = (role, face_label_fixed)
 
 
-    # --- Final Boundary Block Construction ---
+    # --- Final Boundary Block Construction (Grouping Faces) ---
+    grouped_blocks = {}
+    
     for tag in surfaces:
         face_id = tag[1]
+        
         # Use the role and label determined by the most robust logic 
-        role, face_label = face_roles.get(face_id, ("wall", None))
+        # Default to ('wall', 'wall') if not found (safer than 'None')
+        role, face_label = face_roles.get(face_id, ("wall", "wall")) 
 
         # *** SKIP FACES MARKED AS "skip" ***
         if role == "skip":
             if debug:
                 print(f"[DEBUG] Skipping face {face_id} as it is a perpendicular bounding plane in internal flow.")
             continue
-
-        # Determine if the label is descriptive (i.e., not the simple 'wall' fallback)
-        # Note: If face_label is "wall", is_descriptive_label is False, meaning the apply_faces list will be empty ([]).
-        # This is fine, as the role is still "wall". We can be slightly more explicit here:
-        face_label and face_label not in ["wall"]
-
-        block = {
-            "role": role,
-            "type": "dirichlet" if role in ["inlet", "wall"] else "neumann",
-            "faces": [face_id],
-            "apply_to": ["velocity", "pressure"] if role == "inlet" else ["pressure"] if role == "outlet" else ["velocity"],
-            "comment": {
-                "inlet": "Defines inlet flow parameters for velocity and pressure",
-                "outlet": "Defines outlet flow behavior with pressure gradient",
-                "wall": "Defines near-wall flow parameters with no-slip condition"
-            }.get(role, "Boundary condition defined by flow logic") # Use .get for robustness
-        }
+            
+        # The key for grouping should be the role and the descriptive label
+        # e.g., ("inlet", "x_min"), ("wall", "wall"), ("outlet", "x_max")
+        group_key = (role, face_label)
         
-        # Construct apply_faces list: only include label if it's descriptive (x_min, y_max, etc.)
-        # OR if the role is "wall" AND the label is "wall" (to explicitly label internal features)
-        apply_faces_list = []
-        if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
-             apply_faces_list = [face_label]
-        elif role == "wall" and face_label == "wall":
-             apply_faces_list = ["wall"] # Explicitly add "wall" for non-bounding internal features
+        if group_key not in grouped_blocks:
+            # Create a new block template
+            block = {
+                "role": role,
+                "type": "dirichlet" if role in ["inlet", "wall"] else "neumann",
+                "faces": [face_id],
+                "apply_to": ["velocity", "pressure"] if role == "inlet" else ["pressure"] if role == "outlet" else ["velocity"],
+                "comment": {
+                    "inlet": "Defines inlet flow parameters for velocity and pressure",
+                    "outlet": "Defines outlet flow behavior with pressure gradient",
+                    "wall": "Defines near-wall flow parameters with no-slip condition"
+                }.get(role, "Boundary condition defined by flow logic")
+            }
+            
+            # Construct apply_faces list based on the label
+            apply_faces_list = []
+            if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
+                 apply_faces_list = [face_label]
+            # Explicitly add "wall" if the role/label is generic wall
+            elif role == "wall" and face_label == "wall":
+                 apply_faces_list = ["wall"] 
 
-        if role == "inlet":
-            block["velocity"] = velocity
-            block["pressure"] = int(pressure)
-            block["apply_faces"] = apply_faces_list
-        elif role == "outlet":
-            block["apply_faces"] = apply_faces_list
-        elif role == "wall":
-            block["velocity"] = [0.0, 0.0, 0.0]
-            block["no_slip"] = no_slip
-            block["apply_faces"] = apply_faces_list
+            if role == "inlet":
+                block["velocity"] = velocity
+                block["pressure"] = int(pressure)
+                block["apply_faces"] = apply_faces_list
+            elif role == "outlet":
+                block["apply_faces"] = apply_faces_list
+            elif role == "wall":
+                block["velocity"] = [0.0, 0.0, 0.0]
+                block["no_slip"] = no_slip
+                block["apply_faces"] = apply_faces_list
+            
+            grouped_blocks[group_key] = block
+            
+        else:
+            # Append the face_id to the existing block's list
+            grouped_blocks[group_key]["faces"].append(face_id)
+            if debug:
+                 print(f"[DEBUG] Grouped face {face_id} into existing block with key {group_key}")
 
-        boundary_conditions.append(block)
-        if debug:
-            print(f"[DEBUG] Appended boundary block for face {face_id}: {block}")
 
+    boundary_conditions = list(grouped_blocks.values())
+    
     if debug:
         print("[DEBUG] Final boundary condition blocks:")
         for b in boundary_conditions:
