@@ -1,21 +1,12 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,4 +1,36 @@ [
-+  {
-+    "apply_faces": [
-+      "x_max"
-+    ],
-+    "apply_to": [
-+      "pressure"
-+    ],
-+    "comment": "Defines outlet flow behavior with pressure gradient",
-+    "faces": [
-+      1
-+    ],
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -10,8 +10,26 @@     "faces": [
+       1
+     ],
 +    "pressure": 101325.0,
-+    "role": "outlet",
-+    "type": "neumann"
+     "role": "outlet",
+     "type": "neumann"
 +  },
 +  {
 +    "apply_to": [
@@ -33,11 +24,10 @@
 +      0.0,
 +      0.0
 +    ]
-+  },
+   },
    {
      "apply_faces": [
-       "x_min"
-@@ -11,7 +43,7 @@     "faces": [
+@@ -25,7 +43,7 @@     "faces": [
        3
      ],
 -    "pressure": 101325,
@@ -45,26 +35,14 @@
      "role": "inlet",
      "type": "dirichlet",
      "velocity": [
-@@ -21,18 +53,21 @@     ]
-   },
-   {
--    "apply_faces": [
--      "x_max"
-+    "apply_to": [
-+      "velocity"
-     ],
--    "apply_to": [
--      "pressure"
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
+@@ -40,9 +58,40 @@     ],
+     "comment": "Defines near-wall flow parameters with no-slip condition",
+     "faces": [
+-      2,
+-      4,
+-      5,
 +      4
-     ],
--    "comment": "Defines outlet flow behavior with pressure gradient",
--    "faces": [
--      1
--    ],
--    "role": "outlet",
--    "type": "neumann"
++    ],
 +    "no_slip": true,
 +    "role": "wall",
 +    "type": "dirichlet",
@@ -73,15 +51,13 @@
 +      0.0,
 +      0.0
 +    ]
-   },
-   {
-     "apply_to": [
-@@ -40,9 +75,23 @@     ],
-     "comment": "Defines near-wall flow parameters with no-slip condition",
-     "faces": [
--      2,
--      4,
--      5,
++  },
++  {
++    "apply_to": [
++      "velocity"
++    ],
++    "comment": "Defines near-wall flow parameters with no-slip condition",
++    "faces": [
 +      5
 +    ],
 +    "no_slip": true,
@@ -104,4 +80,4 @@
      "no_slip": true,
 -------------------------------------------------
 
---- Commit Details: Run 18483041269 / Attempt 1 ---
+--- Commit Details: Run 18483521166 / Attempt 1 ---
