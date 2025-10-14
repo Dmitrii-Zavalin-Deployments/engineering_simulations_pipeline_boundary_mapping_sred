@@ -1,95 +1,23 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for cube_with_hole_internal_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -1,78 +1,122 @@-{
--  "flattening_order": "x-major",
--  "geometry_mask_flat": [
--    0,
--    0,
--    0,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    1,
--    1,
--    0,
--    0,
--    0,
--    0,
--    0
--  ],
--  "geometry_mask_shape": [
--    4,
--    4,
--    4
--  ],
--  "mask_encoding": {
--    "fluid": 1,
--    "solid": 0
-+[
-+  {
-+    "apply_faces": [
+--- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -1,17 +1,24 @@ [
+   {
+     "apply_faces": [
+-      "x_max"
 +      "x_min"
-+    ],
-+    "apply_to": [
+     ],
+     "apply_to": [
 +      "velocity",
-+      "pressure"
-+    ],
+       "pressure"
+     ],
+-    "comment": "Defines outlet flow behavior with pressure gradient",
 +    "comment": "Defines inlet flow parameters for velocity and pressure",
-+    "faces": [
-+      1
-+    ],
+     "faces": [
+       1
+     ],
+-    "role": "outlet",
+-    "type": "neumann"
 +    "pressure": 101325,
 +    "role": "inlet",
 +    "type": "dirichlet",
@@ -98,106 +26,63 @@
 +      0.0,
 +      0.0
 +    ]
-+  },
-+  {
+   },
+   {
+     "apply_to": [
+@@ -31,22 +38,18 @@     ]
+   },
+   {
+-    "apply_faces": [
+-      "x_min"
 +    "apply_to": [
 +      "velocity"
-+    ],
+     ],
+-    "apply_to": [
+-      "velocity",
+-      "pressure"
+-    ],
+-    "comment": "Defines inlet flow parameters for velocity and pressure",
 +    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      2
-+    ],
+     "faces": [
+       3
+     ],
+-    "pressure": 101325,
+-    "role": "inlet",
 +    "no_slip": true,
 +    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
+     "type": "dirichlet",
+     "velocity": [
+-      1.0,
 +      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      3
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      4
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      5
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Defines near-wall flow parameters with no-slip condition",
-+    "faces": [
-+      6
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet",
-+    "velocity": [
-+      0.0,
-+      0.0,
-+      0.0
-+    ]
-+  },
-+  {
-+    "apply_faces": [
+       0.0,
+       0.0
+     ]
+@@ -104,22 +107,16 @@   },
+   {
+     "apply_faces": [
+-      "cylindrical_surface"
 +      "x_max"
-+    ],
-+    "apply_to": [
+     ],
+     "apply_to": [
+-      "velocity"
 +      "pressure"
-+    ],
+     ],
+-    "comment": "Defines near-wall flow parameters with no-slip condition",
 +    "comment": "Defines outlet flow behavior with pressure gradient",
-+    "faces": [
-+      7
-+    ],
+     "faces": [
+       7
+     ],
+-    "no_slip": true,
+-    "role": "wall",
+-    "type": "dirichlet",
+-    "velocity": [
+-      0.0,
+-      0.0,
+-      0.0
+-    ]
 +    "role": "outlet",
 +    "type": "neumann"
    }
--}+]-------------------------------------------------
+ ]-------------------------------------------------
 
---- Commit Details: Run 18500756628 / Attempt 1 ---
+--- Commit Details: Run 18501808419 / Attempt 1 ---
