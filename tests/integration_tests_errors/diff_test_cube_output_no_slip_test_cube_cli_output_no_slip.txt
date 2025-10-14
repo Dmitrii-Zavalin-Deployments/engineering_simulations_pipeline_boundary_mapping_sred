@@ -1,0 +1,58 @@
+❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
+
+--- JSON UNIFIED DIFF (Expected vs Generated) ---
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,7 +1,7 @@ [
+   {
+     "apply_faces": [
+-      "x_max"
++      "x_min"
+     ],
+     "apply_to": [
+       "pressure"
+@@ -14,6 +14,9 @@     "type": "neumann"
+   },
+   {
++    "apply_faces": [
++      "y_max"
++    ],
+     "apply_to": [
+       "velocity"
+     ],
+@@ -32,7 +35,7 @@   },
+   {
+     "apply_faces": [
+-      "x_min"
++      "x_max"
+     ],
+     "apply_to": [
+       "velocity",
+@@ -52,6 +55,9 @@     ]
+   },
+   {
++    "apply_faces": [
++      "y_max"
++    ],
+     "apply_to": [
+       "velocity"
+     ],
+@@ -69,6 +75,9 @@     ]
+   },
+   {
++    "apply_faces": [
++      "z_min"
++    ],
+     "apply_to": [
+       "velocity"
+     ],
+@@ -86,6 +95,9 @@     ]
+   },
+   {
++    "apply_faces": [
++      "z_max"
++    ],
+     "apply_to": [
+       "velocity"
+     ],
+-------------------------------------------------
+
+--- Commit Details: Run 18502188951 / Attempt 1 ---
