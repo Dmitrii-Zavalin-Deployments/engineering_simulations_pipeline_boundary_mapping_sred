@@ -185,7 +185,7 @@ jobs:
         id: integration_test_hollow_cylinder_external_output_slip
         run: |
           STEP_FILE="tests/test_models/hollow_cylinder.step"
-          EXPECTED_OUTPUT_PATH="tests/test_models/hollow_cylinder_external_output_slip.json"
+          EXPECTED_OUTPUT_PATH="tests/test_models/hollow_cylinder_external_output_no_slip.json"
           TEMP_OUTPUT_FILE="tests/test_models/hollow_cylinder_cli_output_slip.json"
 
           if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
@@ -193,7 +193,7 @@ jobs:
             exit 1
           fi
 
-          echo "--- Running test: hollow_cylinder_external_output_slip ---"
+          echo "--- Running test: hollow_cylinder_external_output_no_slip ---"
 
           python3 src/gmsh_runner.py \
             --step "$STEP_FILE" \
@@ -207,7 +207,7 @@ jobs:
 
           python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
 
-          echo "✅ Integration test completed for hollow_cylinder_external_output_slip."
+          echo "✅ Integration test completed for hollow_cylinder_external_output_no_slip."
 
       - name: 🧪 Run Unit Tests with Coverage
         run: |
