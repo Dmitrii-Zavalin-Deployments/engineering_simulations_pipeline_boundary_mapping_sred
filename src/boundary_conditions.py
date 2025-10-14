@@ -19,13 +19,9 @@ def classify_face_label(normal, face_id, debug):
     max_index = max(range(3), key=lambda i: abs(normal[i]))
     
     if debug:
-        print(f"[DEBUG_LABEL] Face {face_id}: Max index found: 0 (x-axis). Max component: {normal[max_index]:.4f}") # Corrected index
-    # Note: The debug message in the prompt traceback has an error on Face 1 (Max index found: 0 (x-axis). Max component: -1.0000)
-    # The debug message in the prompt traceback has an error on Face 2 (Max index found: 1 (y-axis). Max component: 1.0000)
-    # The debug message in the prompt traceback has an error on Face 3 (Max index found: 0 (x-axis). Max component: 1.0000)
-    # The debug message in the prompt traceback has an error on Face 4 (Max index found: 1 (y-axis). Max component: 1.0000)
-    # The debug message in the prompt traceback has an error on Face 5 (Max index found: 2 (z-axis). Max component: -1.0000)
-    # The debug message in the prompt traceback has an error on Face 6 (Max index found: 2 (z-axis). Max component: 1.0000)
+        # Reverting index for debug printing consistency, but keeping logic correct
+        # The logic below relies on finding the max_index correctly.
+        print(f"[DEBUG_LABEL] Face {face_id}: Max index found: {max_index} ({axis[max_index]}-axis). Max component: {normal[max_index]:.4f}") 
 
     # 1. Robustness Threshold
     if abs(normal[max_index]) < 0.95:
@@ -224,7 +220,8 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 else:
                     # Flow Axis, NOT on bounding plane (must be an internal feature wall)
                     role = "wall"
-                    face_label_fixed = "internal_wall"
+                    # RENAMED from "internal_wall" to "wall"
+                    face_label_fixed = "wall" 
                     if debug:
                         print(f"[DEBUG_GEO] Face {face_id} ({face_label_fixed}): Flow Axis, NOT on bounding plane. Role: {role}")
                         
@@ -238,7 +235,8 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             else:
                 # 3. Internal Feature Walls (Not on any bounding plane).
                 role = "wall"
-                face_label_fixed = "internal_wall"
+                # RENAMED from "internal_wall" to "wall"
+                face_label_fixed = "wall"
                 if debug:
                     print(f"[DEBUG_GEO] Face {face_id} ({face_label_fixed}): INTERNAL FEATURE. Role: {role}")
             
@@ -259,6 +257,8 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             continue
 
         # Determine if the label is descriptive (i.e., not the simple 'wall' fallback)
+        # Note: If face_label is "wall", is_descriptive_label is False, meaning the apply_faces list will be empty ([]).
+        # This is fine, as the role is still "wall". We can be slightly more explicit here:
         is_descriptive_label = face_label and face_label not in ["wall"]
 
         block = {
@@ -273,8 +273,13 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             }.get(role, "Boundary condition defined by flow logic") # Use .get for robustness
         }
         
-        # Construct apply_faces list: only include label if it's descriptive (x_min, y_max, internal_wall, etc.)
-        apply_faces_list = [face_label] if is_descriptive_label else []
+        # Construct apply_faces list: only include label if it's descriptive (x_min, y_max, etc.)
+        # OR if the role is "wall" AND the label is "wall" (to explicitly label internal features)
+        apply_faces_list = []
+        if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
+             apply_faces_list = [face_label]
+        elif role == "wall" and face_label == "wall":
+             apply_faces_list = ["wall"] # Explicitly add "wall" for non-bounding internal features
 
         if role == "inlet":
             block["velocity"] = velocity
