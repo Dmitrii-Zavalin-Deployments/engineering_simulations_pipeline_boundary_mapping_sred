@@ -23,7 +23,7 @@
     "faces": [3],
     "apply_to": ["velocity", "pressure"],
     "velocity": [1.0, 0.0, 0.0],
-    "pressure": 101325.0,
+    "pressure": 101325,
     "comment": "Defines inlet flow parameters for velocity and pressure"
   },
   {
