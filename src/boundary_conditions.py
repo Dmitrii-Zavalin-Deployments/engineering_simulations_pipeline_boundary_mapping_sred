@@ -162,9 +162,9 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if flow_region == "external":
         # For external flow, the object being loaded is the obstacle.
         if debug:
-            print("[DEBUG_FLOW] EXTERNAL flow selected. Forcing all geometric faces to 'wall'.")
+            print("[DEBUG_FLOW] EXTERNAL flow selected. Forcing all geometric faces to 'wall' and synthesizing far-field boundaries.")
             
-            # Integrate padding factor logic for future domain definition (if padding is used)
+            # Integrate padding factor logic for visualization/downstream systems
             if padding_factor > 0 and resolution is not None:
                 pad = padding_factor * resolution
                 comp_min_x = x_min - pad
@@ -174,9 +174,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 comp_max_y = y_max + pad
                 comp_max_z = z_max + pad
                 print(f"[DEBUG] Computational box bounds (Padded): min=({comp_min_x:.3f}, {comp_min_y:.3f}, {comp_min_z:.3f}), max=({comp_max_x:.3f}, {comp_max_y:.3f}, {comp_max_z:.3f})")
-
-            # NOTE: We skip adding Far-Field boundaries here and rely on downstream system to add them, 
-            # but we ensure the OBSTACLE faces are correctly labeled and grouped.
 
         for face_id, data in face_geometry_data.items():
             # Force role to "wall" and label to "wall" for simple grouping
@@ -269,7 +266,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             continue
             
         # The key for grouping should be the role and the descriptive label
-        # e.g., ("inlet", "x_min"), ("wall", "wall"), ("outlet", "x_max")
+        # In external flow, this will be ('wall', 'wall') for all obstacle faces.
         group_key = (role, face_label)
         
         if group_key not in grouped_blocks:
@@ -299,6 +296,8 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
                 block["pressure"] = int(pressure)
                 block["apply_faces"] = apply_faces_list
             elif role == "outlet":
+                # Corrected apply_to for outlet
+                block["apply_to"] = ["pressure"] 
                 block["apply_faces"] = apply_faces_list
             elif role == "wall":
                 block["velocity"] = [0.0, 0.0, 0.0]
@@ -316,6 +315,77 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
     boundary_conditions = list(grouped_blocks.values())
     
+    # 2. Synthesize FAR-FIELD Boundaries for External Flow (Crucial for a complete model)
+    if flow_region == "external":
+        if debug:
+            print("[DEBUG_FLOW] Synthesizing external domain boundaries...")
+            
+        # Define labels perpendicular to the flow axis
+        perpendicular_axes = [
+            f"{a}_{d}" 
+            for i, a in enumerate(["x", "y", "z"]) 
+            for d in ["min", "max"] 
+            if i != axis_index # Exclude the dominant flow axis (x_min, x_max in this case)
+        ]
+        
+        synthesized_id = -1
+        
+        # --- Synthesize Inlet/Outlet ---
+        
+        # Inlet (e.g., x_min in positive X flow)
+        inlet_label = f"{axis_label}_min" if is_positive_flow else f"{axis_label}_max"
+        
+        boundary_conditions.append({
+            "role": "inlet",
+            "type": "dirichlet",
+            "faces": [synthesized_id],
+            "apply_to": ["velocity", "pressure"],
+            "comment": "Synthesized Far-Field Inlet (boundary of the computational box)",
+            "velocity": velocity,
+            "pressure": int(pressure),
+            "apply_faces": [inlet_label]
+        })
+        if debug:
+            print(f"[DEBUG_FLOW] Added synthesized Inlet (ID {synthesized_id}) with label {inlet_label}")
+        synthesized_id -= 1
+
+        # Outlet (e.g., x_max in positive X flow)
+        outlet_label = f"{axis_label}_max" if is_positive_flow else f"{axis_label}_min"
+        
+        boundary_conditions.append({
+            "role": "outlet",
+            "type": "neumann",
+            "faces": [synthesized_id],
+            "apply_to": ["pressure"],
+            "comment": "Synthesized Far-Field Outlet (boundary of the computational box)",
+            "apply_faces": [outlet_label]
+        })
+        if debug:
+            print(f"[DEBUG_FLOW] Added synthesized Outlet (ID {synthesized_id}) with label {outlet_label}")
+        synthesized_id -= 1
+
+        # --- Synthesize Far-Field Walls (Symmetry/Slip Walls) ---
+        far_field_ids = []
+        
+        for label in perpendicular_axes:
+            far_field_ids.append(synthesized_id)
+            synthesized_id -= 1 # Continue negative sequence
+            
+        # Group all far-field walls into one block for efficiency (common practice)
+        boundary_conditions.append({
+            "role": "wall", # Using 'wall' as a generic far-field/symmetry condition
+            "type": "dirichlet", 
+            "faces": far_field_ids,
+            "apply_to": ["velocity"],
+            "comment": "Synthesized Far-Field Walls/Symmetry (side boundaries of the computational box)",
+            "velocity": [0.0, 0.0, 0.0],
+            "no_slip": no_slip, # <--- **FIXED: Using the `no_slip` parameter**
+            "apply_faces": perpendicular_axes # These are the y_min, y_max, z_min, z_max labels
+        })
+        if debug:
+            print(f"[DEBUG_FLOW] Added synthesized Far-Field Walls (IDs {far_field_ids}) with labels {perpendicular_axes}")
+
+
     if debug:
         print("[DEBUG] Final boundary condition blocks:")
         for b in boundary_conditions:
