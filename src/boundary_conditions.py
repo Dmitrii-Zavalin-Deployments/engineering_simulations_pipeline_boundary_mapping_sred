@@ -119,10 +119,10 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
         if role == "inlet":
             block["velocity"] = velocity
-            block["pressure"] = pressure
+            block["pressure"] = int(pressure)
             block["apply_faces"] = [face_label] if face_label else []
         elif role == "outlet":
-            block["pressure"] = pressure
+            block["pressure"] = int(pressure)
             block["apply_faces"] = [face_label] if face_label else []
         elif role == "wall":
             block["velocity"] = [0.0, 0.0, 0.0]
