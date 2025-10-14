@@ -64,7 +64,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         else:
             face_roles[face_id] = ("wall", None)
 
-    # ✅ Always enforce fallback for internal flow
     if flow_region == "internal":
         if debug:
             print("[DEBUG] Enforcing fallback inlet/outlet roles for internal flow")
@@ -122,7 +121,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             block["pressure"] = int(pressure)
             block["apply_faces"] = [face_label] if face_label else []
         elif role == "outlet":
-            block["pressure"] = int(pressure)
             block["apply_faces"] = [face_label] if face_label else []
         elif role == "wall":
             block["velocity"] = [0.0, 0.0, 0.0]
@@ -142,7 +140,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 def classify_face_label(normal):
     axis = ["x", "y", "z"]
     max_index = max(range(3), key=lambda i: abs(normal[i]))
-    direction = "max" if normal[max_index] < 0 else "min"  # ✅ Flipped logic
+    direction = "max" if normal[max_index] < 0 else "min"
     return f"{axis[max_index]}_{direction}"
 
 
