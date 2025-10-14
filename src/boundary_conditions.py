@@ -250,72 +250,91 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
 
     # --- Final Boundary Block Construction (Grouping Faces) ---
-    grouped_blocks = {}
+    boundary_conditions = []
     
-    for tag in surfaces:
-        face_id = tag[1]
+    # 1. Handle Real Faces (ID > 0)
+    if flow_region == "internal":
+        # INTERNAL: Group faces with the same role and geometric label (like the original code)
+        grouped_blocks = {}
         
-        # Use the role and label determined by the most robust logic 
-        # Default to ('wall', 'wall') if not found (safer than 'None')
-        role, face_label = face_roles.get(face_id, ("wall", "wall")) 
+        for tag in surfaces:
+            face_id = tag[1]
+            role, face_label = face_roles.get(face_id, ("wall", "wall")) 
 
-        # *** SKIP FACES MARKED AS "skip" ***
-        if role == "skip":
-            if debug:
-                print(f"[DEBUG] Skipping face {face_id} as it is a perpendicular bounding plane in internal flow.")
-            continue
+            if role == "skip":
+                if debug:
+                    print(f"[DEBUG] Skipping face {face_id} as it is a perpendicular bounding plane in internal flow.")
+                continue
+                
+            # The key for grouping should be the role and the descriptive label
+            group_key = (role, face_label)
             
-        # The key for grouping should be the role and the descriptive label
-        # In external flow (for obstacle faces), this will be ('wall', 'wall')
-        group_key = (role, face_label)
-        
-        if group_key not in grouped_blocks:
-            # Create a new block template
+            if group_key not in grouped_blocks:
+                # Create a new block template
+                block = {
+                    "role": role,
+                    "type": "dirichlet" if role in ["inlet", "wall"] else "neumann",
+                    "faces": [face_id],
+                    "apply_to": ["velocity", "pressure"] if role == "inlet" else ["pressure"] if role == "outlet" else ["velocity"],
+                    "comment": {
+                        "inlet": "Defines inlet flow parameters for velocity and pressure",
+                        "outlet": "Defines outlet flow behavior with pressure gradient",
+                        "wall": "Defines near-wall flow parameters with no-slip condition"
+                    }.get(role, "Boundary condition defined by flow logic")
+                }
+                
+                # Construct apply_faces list based on the label
+                apply_faces_list = []
+                if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
+                    apply_faces_list = [face_label]
+                elif role == "wall" and face_label == "wall":
+                    apply_faces_list = ["wall"] 
+
+                if role == "inlet":
+                    block["velocity"] = velocity
+                    block["pressure"] = int(pressure)
+                elif role == "outlet":
+                    block["apply_to"] = ["pressure"] 
+                elif role == "wall":
+                    block["velocity"] = [0.0, 0.0, 0.0]
+                    block["no_slip"] = no_slip
+                
+                block["apply_faces"] = apply_faces_list
+                grouped_blocks[group_key] = block
+                
+            else:
+                # Append the face_id to the existing block's list
+                grouped_blocks[group_key]["faces"].append(face_id)
+                if debug:
+                    print(f"[DEBUG] Grouped face {face_id} into existing block with key {group_key}")
+
+        boundary_conditions.extend(list(grouped_blocks.values()))
+
+
+    elif flow_region == "external":
+        # EXTERNAL: Separate ALL obstacle faces for max flexibility (as decided for external flow)
+        for tag in surfaces:
+            face_id = tag[1]
+            role, face_label = face_roles.get(face_id, ("wall", "wall")) 
+
+            # In external flow, all loaded faces are walls, and none are skipped
+            if role != "wall": continue
+                
+            # Create a new block for THIS face (NO grouping)
             block = {
                 "role": role,
-                "type": "dirichlet" if role in ["inlet", "wall"] else "neumann",
-                "faces": [face_id],
-                "apply_to": ["velocity", "pressure"] if role == "inlet" else ["pressure"] if role == "outlet" else ["velocity"],
-                "comment": {
-                    "inlet": "Defines inlet flow parameters for velocity and pressure",
-                    "outlet": "Defines outlet flow behavior with pressure gradient",
-                    "wall": "Defines near-wall flow parameters with no-slip condition"
-                }.get(role, "Boundary condition defined by flow logic")
+                "type": "dirichlet",
+                "faces": [face_id], 
+                "apply_to": ["velocity"],
+                "comment": f"Obstacle Wall Face {face_id} with no-slip condition",
+                "velocity": [0.0, 0.0, 0.0],
+                "no_slip": no_slip, 
+                "apply_faces": [f"wall_{face_id}"] # Unique label for individual obstacle faces
             }
-            
-            # Construct apply_faces list based on the label
-            apply_faces_list = []
-            if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
-                 apply_faces_list = [face_label]
-            # Explicitly add "wall" if the role/label is generic wall
-            elif role == "wall" and face_label == "wall":
-                 apply_faces_list = ["wall"] 
-
-            if role == "inlet":
-                block["velocity"] = velocity
-                block["pressure"] = int(pressure)
-                block["apply_faces"] = apply_faces_list
-            elif role == "outlet":
-                # Corrected apply_to for outlet
-                block["apply_to"] = ["pressure"] 
-                block["apply_faces"] = apply_faces_list
-            elif role == "wall":
-                block["velocity"] = [0.0, 0.0, 0.0]
-                block["no_slip"] = no_slip
-                block["apply_faces"] = apply_faces_list
-            
-            grouped_blocks[group_key] = block
-            
-        else:
-            # Append the face_id to the existing block's list
-            grouped_blocks[group_key]["faces"].append(face_id)
-            if debug:
-                 print(f"[DEBUG] Grouped face {face_id} into existing block with key {group_key}")
+            boundary_conditions.append(block)
 
 
-    boundary_conditions = list(grouped_blocks.values())
-    
-    # 2. Synthesize FAR-FIELD Boundaries for External Flow (Crucial for a complete model)
+    # --- Synthesize FAR-FIELD Boundaries for External Flow (Crucial for a complete model) ---
     if flow_region == "external":
         if debug:
             print("[DEBUG_FLOW] Synthesizing external domain boundaries...")
@@ -364,23 +383,23 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             print(f"[DEBUG_FLOW] Added synthesized Outlet (ID {synthesized_id}) with label {outlet_label}")
         synthesized_id -= 1
 
-        # --- Synthesize Far-Field Walls (Symmetry/Slip Walls) - SEPARATED BLOCKS ---
+        # --- Synthesize Far-Field Walls (Symmetry/Slip Walls) - SEPARATED BLOCKS (as agreed) ---
         
         for label in perpendicular_axes:
-            # Create a separate block for each far-field face (as requested for consistency)
+            # Create a separate block for each far-field face
             boundary_conditions.append({
                 "role": "wall", 
                 "type": "dirichlet", 
-                "faces": [synthesized_id], # Only one face ID per block
+                "faces": [synthesized_id], 
                 "apply_to": ["velocity"],
                 "comment": f"Synthesized Far-Field Wall ({label})",
                 "velocity": [0.0, 0.0, 0.0],
-                "no_slip": no_slip, # Dynamically set by the function parameter
+                "no_slip": no_slip, 
                 "apply_faces": [label]
             })
             if debug:
                 print(f"[DEBUG_FLOW] Added synthesized Far-Field Wall (ID {synthesized_id}) with label {label}")
-            synthesized_id -= 1 # Continue negative sequence for the next face
+            synthesized_id -= 1 
 
 
     if debug:
