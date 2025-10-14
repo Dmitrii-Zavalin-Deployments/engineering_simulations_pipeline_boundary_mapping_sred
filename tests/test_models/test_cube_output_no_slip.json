@@ -8,6 +8,15 @@
     "comment": "Defines outlet flow behavior with pressure gradient"
   },
   {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [2],
+    "apply_to": ["velocity"],
+    "velocity": [0.0, 0.0, 0.0],
+    "no_slip": true,
+    "comment": "Defines near-wall flow parameters with no-slip condition"
+  },
+  {
     "role": "inlet",
     "type": "dirichlet",
     "apply_faces": ["x_min"],
@@ -20,13 +29,30 @@
   {
     "role": "wall",
     "type": "dirichlet",
-    "faces": [2, 4, 5, 6],
+    "faces": [4],
+    "apply_to": ["velocity"],
+    "velocity": [0.0, 0.0, 0.0],
+    "no_slip": true,
+    "comment": "Defines near-wall flow parameters with no-slip condition"
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [5],
+    "apply_to": ["velocity"],
+    "velocity": [0.0, 0.0, 0.0],
+    "no_slip": true,
+    "comment": "Defines near-wall flow parameters with no-slip condition"
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [6],
     "apply_to": ["velocity"],
     "velocity": [0.0, 0.0, 0.0],
     "no_slip": true,
     "comment": "Defines near-wall flow parameters with no-slip condition"
   }
 ]
-
 
 
