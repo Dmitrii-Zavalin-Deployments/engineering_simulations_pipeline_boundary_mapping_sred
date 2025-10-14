@@ -1,15 +1,31 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,7 +1,7 @@ [
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,19 +1,29 @@ [
    {
      "apply_faces": [
 -      "x_max"
 +      "x_min"
      ],
      "apply_to": [
++      "velocity",
        "pressure"
-@@ -14,6 +14,9 @@     "type": "neumann"
+     ],
+-    "comment": "Defines outlet flow behavior with pressure gradient",
++    "comment": "Defines inlet flow parameters for velocity and pressure",
+     "faces": [
+       1
+     ],
+-    "role": "outlet",
+-    "type": "neumann"
++    "pressure": 101325,
++    "role": "inlet",
++    "type": "dirichlet",
++    "velocity": [
++      1.0,
++      0.0,
++      0.0
++    ]
    },
    {
 +    "apply_faces": [
@@ -18,15 +34,31 @@
      "apply_to": [
        "velocity"
      ],
-@@ -32,7 +35,7 @@   },
+@@ -32,26 +42,22 @@   },
    {
      "apply_faces": [
 -      "x_min"
 +      "x_max"
      ],
      "apply_to": [
-       "velocity",
-@@ -52,6 +55,9 @@     ]
+-      "velocity",
+       "pressure"
+     ],
+-    "comment": "Defines inlet flow parameters for velocity and pressure",
++    "comment": "Defines outlet flow behavior with pressure gradient",
+     "faces": [
+       3
+     ],
+-    "pressure": 101325,
+-    "role": "inlet",
+-    "type": "dirichlet",
+-    "velocity": [
+-      1.0,
+-      0.0,
+-      0.0
+-    ]
++    "role": "outlet",
++    "type": "neumann"
    },
    {
 +    "apply_faces": [
@@ -55,4 +87,4 @@
      ],
 -------------------------------------------------
 
---- Commit Details: Run 18502188951 / Attempt 1 ---
+--- Commit Details: Run 18502811291 / Attempt 1 ---
