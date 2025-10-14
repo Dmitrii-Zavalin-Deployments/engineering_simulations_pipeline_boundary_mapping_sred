@@ -87,6 +87,9 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             normal_unit = (normal / nmag).tolist()
             face_label = classify_face_label(normal_unit)
 
+            if debug:
+                print(f"[DEBUG] Face {face_id} normal: {normal_unit} → label: {face_label}")
+
             if face_label == "x_min":
                 face_roles[face_id] = ("inlet", "x_min")
                 if debug:
@@ -139,7 +142,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 def classify_face_label(normal):
     axis = ["x", "y", "z"]
     max_index = max(range(3), key=lambda i: abs(normal[i]))
-    direction = "min" if normal[max_index] < 0 else "max"
+    direction = "max" if normal[max_index] < 0 else "min"  # ✅ Flipped logic
     return f"{axis[max_index]}_{direction}"
 
 
