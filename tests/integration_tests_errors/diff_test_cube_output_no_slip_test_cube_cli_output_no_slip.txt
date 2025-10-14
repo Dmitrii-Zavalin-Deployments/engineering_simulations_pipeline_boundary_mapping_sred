@@ -4,10 +4,18 @@
 --- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -10,6 +10,7 @@     "faces": [
        1
      ],
-+    "pressure": 101325.0,
++    "pressure": 101325,
      "role": "outlet",
      "type": "neumann"
    },
+@@ -42,7 +43,7 @@     "faces": [
+       3
+     ],
+-    "pressure": 101325.0,
++    "pressure": 101325,
+     "role": "inlet",
+     "type": "dirichlet",
+     "velocity": [
 -------------------------------------------------
 
---- Commit Details: Run 18494374613 / Attempt 1 ---
+--- Commit Details: Run 18500307036 / Attempt 1 ---
