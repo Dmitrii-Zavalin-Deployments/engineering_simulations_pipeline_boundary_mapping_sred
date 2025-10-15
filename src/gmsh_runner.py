@@ -1,5 +1,3 @@
-# src/gmsh_runner.py
-
 import argparse
 import json
 import os
@@ -9,6 +7,8 @@ from src.utils.gmsh_input_check import validate_step_has_volumes, ValidationErro
 
 # ✅ Exposed for test patching
 FLOW_DATA_PATH = "data/testing-input-output/flow_data.json"
+# 🆕 Define the path to the robust GMSH boundary assignment script
+GMSH_FIX_SCRIPT_PATH = "src/gmsh_boundary_fix.geo"
 
 def main():
     parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
@@ -35,6 +35,7 @@ def main():
     print(f"       Initial pressure: {args.initial_pressure}")
     print(f"       Output path     : {args.output}")
     print(f"       Debug mode      : {args.debug}")
+    print(f"       GMSH Fix Script : {GMSH_FIX_SCRIPT_PATH}") # 🆕 Added print for new path
 
     flow_data_path = FLOW_DATA_PATH
     if not os.path.isfile(flow_data_path):
@@ -65,6 +66,8 @@ def main():
             no_slip=args.no_slip,
             flow_region=args.flow_region,
             resolution=args.resolution,
+            # 🆕 Pass the path to the GMSH fix script
+            gmsh_fix_script_path=GMSH_FIX_SCRIPT_PATH, 
             debug=args.debug
         )
         print("[DEBUG] Boundary condition generation completed")

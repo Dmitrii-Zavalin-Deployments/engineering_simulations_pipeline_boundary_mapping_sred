@@ -1,7 +1,7 @@
 # src/bc_generators.py
 
 # Placeholder for complex data structure types, usually passed in kwargs
-TOL = 1000 # Re-define tolerance for local use
+TOL = 1e-4 # Re-define tolerance for local use
 
 def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, velocity, pressure, no_slip, axis_index, is_positive_flow, min_bounds, max_bounds, debug):
     """Generates boundary condition blocks for internal flow, grouping faces."""

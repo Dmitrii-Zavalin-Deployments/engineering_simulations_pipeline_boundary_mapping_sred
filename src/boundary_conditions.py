@@ -1,16 +1,29 @@
-# src/boundary_conditions.py
-
 import gmsh
 import math
 import numpy as np
-from .geometry import classify_face_label
+# Removed the dependency on classify_face_label since classification is now tag-based
 from .bc_generators import generate_internal_bc_blocks, generate_external_bc_blocks
 
-def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, padding_factor=0, resolution=None, debug=False):
+# GMSH Physical Tag definitions from src/gmsh_boundary_fix.geo
+GMSH_TAG_TO_ROLE = {
+    1: ("inlet", "x_min"),  # Physical Surface(1) is Inlet
+    2: ("outlet", "x_max"), # Physical Surface(2) is Outlet
+    3: ("wall", "wall")      # Physical Surface(3) is Wall
+}
+
+def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region, padding_factor=0, resolution=None, gmsh_fix_script_path=None, debug=False):
+    # 🆕 Accept the new argument
+    
     gmsh.open(step_path)
     if debug:
         print(f"[DEBUG] Opened STEP file: {step_path}")
 
+    # 🆕 Execute the robust boundary assignment script
+    if gmsh_fix_script_path:
+        if debug:
+            print(f"[DEBUG] Merging GMSH boundary fix script: {gmsh_fix_script_path}")
+        gmsh.merge(gmsh_fix_script_path)
+    
     # 1. Mesh Setup
     if resolution:
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", resolution)
@@ -27,7 +40,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if debug:
         print(f"[DEBUG] Extracted {len(surfaces)} surface entities")
 
-    # 2. Flow and Axis Determination
+    # 2. Flow and Axis Determination (Necessary for downstream BC blocks and model analysis)
     vmag = math.sqrt(sum(v**2 for v in velocity))
     if vmag == 0:
         raise ValueError("Initial velocity vector cannot be zero.")
@@ -40,7 +53,8 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         try:
             axis_index = velocity.index(-axial_velocity_component)
         except ValueError:
-            axis_index = 0 
+            # Fallback if magnitude is used for classification
+            axis_index = max(range(3), key=lambda i: abs(velocity[i]))
             
     axis_label = ["x", "y", "z"][axis_index]
     is_positive_flow = velocity[axis_index] > 0
@@ -48,53 +62,52 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if debug:
         print(f"[DEBUG] Determined dominant flow axis: {axis_label}, positive direction: {is_positive_flow}")
 
-    # 3. Geometric Data Pre-processing
+    # 3. Robust Tag-Based Geometric Data Pre-processing
+    # ❗ Replacing the old, unstable normal vector calculation logic
     face_roles = {}
     face_geometry_data = {}
     
-    for tag in surfaces:
-        face_id = tag[1]
+    # Iterate through the stable Physical Tags defined in the GMSH fix script
+    for tag_id, (role, label) in GMSH_TAG_TO_ROLE.items():
         try:
-            node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
-        except Exception:
-            continue
-        if len(node_coords) < 9:
+            surfaces_in_group = gmsh.model.getEntitiesForPhysicalGroup(dim, tag_id)
+        except Exception as e:
+            # Handle case where a Physical Group might not have been created (e.g., missing wall)
+            if debug:
+                 print(f"[DEBUG] Could not find Physical Group {tag_id} ({role}). Skipping. Error: {e}")
             continue
 
-        p1 = np.array(node_coords[0:3])
-        p2 = np.array(node_coords[3:6])
-        p3 = np.array(node_coords[6:9])
-        normal = np.cross(p2 - p1, p3 - p1)
-        nmag = np.linalg.norm(normal)
-        if nmag == 0:
-            continue
+        if debug:
+            print(f"[DEBUG] Physical Tag {tag_id} ({role}): {len(surfaces_in_group)} surfaces assigned.")
             
-        normal_unit = (normal / nmag).tolist()
-        face_label = classify_face_label(normal_unit, face_id, debug)
-        max_index = max(range(3), key=lambda i: abs(normal_unit[i]))
-        
-        face_geometry_data[face_id] = {
-            "normal_unit": normal_unit,
-            "face_label": face_label,
-            "max_index": max_index,
-            "p_centroid": np.mean(node_coords.reshape(-1, 3), axis=0).tolist()
-        }
-        
-        # Initial role assignment (will be overridden)
-        dot = sum(v * n for v, n in zip(velocity_unit, normal_unit))
-        if dot < -0.95:
-            face_roles[face_id] = ("inlet", face_label)
-        elif dot > 0.95:
-            face_roles[face_id] = ("outlet", face_label)
-        else:
-            face_roles[face_id] = ("wall", face_label)
+        for face_id in surfaces_in_group:
+            # 🆕 The face role and label are now assigned based on the stable tag ID
+            face_roles[face_id] = (role, label)
+
+            # Gather minimal geometry data required by downstream generators (e.g., centroid)
+            p_centroid = [0, 0, 0]
+            try:
+                node_tags, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
+                if node_coords.size > 0:
+                    p_centroid = np.mean(node_coords.reshape(-1, 3), axis=0).tolist()
+            except Exception:
+                pass # Centroid fallback is [0, 0, 0]
+
+            face_geometry_data[face_id] = {
+                # Normal and max_index are now placeholders, as they are no longer used for classification
+                "normal_unit": [0, 0, 0], 
+                "face_label": label,
+                "max_index": 0, 
+                "p_centroid": p_centroid
+            }
 
     # 4. Bounding Box Setup
+    # Bounds calculation remains useful for defining the overall simulation domain size
     bounds = gmsh.model.getBoundingBox(3, 1)
-    # [Handle bounds extraction as before]
     if len(bounds) == 7:
         _, x_min, y_min, z_min, x_max, y_max, z_max = bounds
     else:
+        # Fallback for internal geometry extraction
         x_min, y_min, z_min, x_max, y_max, z_max = bounds if len(bounds) == 6 else [-1e9] * 3 + [1e9] * 3
         
     min_bounds = [x_min, y_min, z_min]
@@ -102,6 +115,14 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     TOL = 1e-4 # Tolerance moved to bc_generators
 
     # 5. Delegate to Flow-Specific Generator
+    # ❗ Ensure all surfaces have a role before passing them to the generator
+    if len(face_roles) != len(surfaces):
+        unassigned_faces = [s[1] for s in surfaces if s[1] not in face_roles]
+        if debug:
+             print(f"[WARN] {len(unassigned_faces)} surface(s) were not assigned a Physical Tag. Forcing role='wall'.")
+        for face_id in unassigned_faces:
+             face_roles[face_id] = ("wall", "wall")
+
     boundary_conditions = []
     
     if flow_region == "internal":
@@ -111,6 +132,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
         )
     elif flow_region == "external":
         # Force all geometric faces to "wall" BEFORE passing to generator
+        # This is primarily for external flow boundary box setup later
         for face_id in face_roles:
             face_roles[face_id] = ("wall", "wall") 
             
