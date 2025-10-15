@@ -51,21 +51,21 @@ def classify_face(x_coords, x_min, x_max, threshold=0.9, tolerance=1e-6):
         return "wall", "wall"
 
 
-def build_face_metadata(face_id, x_coords, role, label):
+def build_face_metadata(face_id, coords, role, label):
     """
     Constructs the metadata dictionary for a classified face.
 
     Args:
         face_id (int): The tag of the surface entity.
-        x_coords (np.ndarray): X-coordinates of the face's nodes.
+        coords (np.ndarray): Full 3D coordinates of the face's nodes.
         role (str): Assigned role ('inlet', 'outlet', 'wall').
         label (str): Assigned label ('x_min', 'x_max', 'wall').
 
     Returns:
         dict: Metadata dictionary for the face.
     """
-    if x_coords.size > 0:
-        p_centroid = [np.mean(x_coords), 0, 0]
+    if coords.size > 0:
+        p_centroid = np.mean(coords, axis=0).tolist()
     else:
         p_centroid = [None, None, None]
 
@@ -95,51 +95,42 @@ def assign_roles_to_faces(surfaces, x_min, x_max, threshold=0.9, tolerance=1e-6,
     face_roles = {}
     face_geometry_data = {}
 
-    for dim, face_id in surfaces:
-        x_coords = get_x_coords(face_id)
+    bbox = gmsh.model.getBoundingBox(3, 1)
+    min_bounds = [bbox[0], bbox[1], bbox[2]]
+    max_bounds = [bbox[3], bbox[4], bbox[5]]
+    TOL = tolerance
 
-        if x_coords.size > 0:
-            role, label = classify_face(x_coords, x_min, x_max, threshold, tolerance)
-        else:
-            role, label = "wall", "wall"
+    for dim, face_id in surfaces:
+        try:
+            _, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
+            coords = node_coords.reshape(-1, 3)
+        except Exception:
+            continue
+
+        if coords.shape[0] < 3:
+            continue
+
+        x_coords = coords[:, 0]
+        role, label = classify_face(x_coords, x_min, x_max, threshold, tolerance)
+        metadata = build_face_metadata(face_id, coords, role, label)
+        centroid = metadata["p_centroid"]
+
+        is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
+        is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
+        is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
+
+        # Override role if it's a wall on a bounding plane (perpendicular)
+        if role == "wall" and is_on_bounding_plane:
+            role = "skip"
+            label = "skip"
+
+        face_roles[face_id] = (role, label)
+        face_geometry_data[face_id] = metadata
 
         if debug:
             print(f"[DEBUG] Face {face_id} classified as: {role} ({label})")
 
-        face_roles[face_id] = (role, label)
-        face_geometry_data[face_id] = build_face_metadata(face_id, x_coords, role, label)
-
     return face_roles, face_geometry_data
-
-
-def is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, threshold=0.9):
-    """
-    Determines whether a wall face lies away from Y and Z boundaries using alignment threshold.
-
-    Args:
-        face_id (int): Face identifier.
-        face_geometry_data (dict): Metadata dictionary for the face.
-        y_min, y_max, z_min, z_max (float): Bounding box limits.
-        threshold (float): Alignment threshold (0–1).
-
-    Returns:
-        bool: True if face is internal wall, False if aligned with Y/Z boundary.
-    """
-    centroid = face_geometry_data.get(face_id, {}).get("p_centroid", [None, None, None])
-    if centroid is None or None in centroid:
-        return False
-
-    y, z = centroid[1], centroid[2]
-    y_span = abs(y_max - y_min)
-    z_span = abs(z_max - z_min)
-
-    def aligned(val, bound, span):
-        return abs(val - bound) / span >= threshold
-
-    if aligned(y, y_min, y_span) or aligned(y, y_max, y_span) or aligned(z, z_min, z_span) or aligned(z, z_max, z_span):
-        return False
-
-    return True
 
 
 

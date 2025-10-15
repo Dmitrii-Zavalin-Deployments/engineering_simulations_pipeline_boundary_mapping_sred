@@ -1,7 +1,5 @@
 # src/bc_generators.py
 
-from .geometry import is_internal_wall
-
 def generate_internal_bc_blocks(
     surfaces, face_geometry_data, face_roles,
     velocity, pressure, no_slip,
@@ -44,16 +42,14 @@ def generate_internal_bc_blocks(
         elif role == "outlet":
             outlet_faces.append(face_id)
             outlet_labels.append(label)
-        else:
+        elif role == "wall":
             wall_faces.append(face_id)
-
-    # Filter wall faces to exclude those on y_min, y_max, z_min, z_max using threshold
-    y_min, y_max = min_bounds[1], max_bounds[1]
-    z_min, z_max = min_bounds[2], max_bounds[2]
-    filtered_wall_faces = [
-        face_id for face_id in wall_faces
-        if is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, threshold)
-    ]
+        elif role == "skip":
+            if debug:
+                print(f"[DEBUG] Skipping face {face_id} (label: {label}) due to perpendicular bounding plane.")
+        else:
+            if debug:
+                print(f"[DEBUG] Face {face_id} has unrecognized role: {role}. Defaulting to skip.")
 
     blocks = []
 
@@ -79,11 +75,11 @@ def generate_internal_bc_blocks(
             "apply_faces": sorted(set(outlet_labels))
         })
 
-    if filtered_wall_faces:
+    if wall_faces:
         blocks.append({
             "role": "wall",
             "type": "dirichlet",
-            "faces": filtered_wall_faces,
+            "faces": wall_faces,
             "apply_to": ["velocity"],
             "comment": "Applies no-slip condition to internal wall surfaces",
             "no_slip": no_slip,
