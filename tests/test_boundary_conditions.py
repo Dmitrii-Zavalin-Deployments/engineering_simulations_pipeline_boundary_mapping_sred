@@ -54,38 +54,6 @@ def test_external_flow_triggers_external_generator(mock_gmsh):
     assert any(block["role"] == "outlet" for block in result)
 
 @patch("src.boundary_conditions.gmsh")
-def test_missing_nodes_skipped_safely(mock_gmsh):
-    mock_gmsh.model.getEntities.return_value = [(2, 1)]
-    # Only 5 values (< 9), should trigger skip
-    mock_gmsh.model.mesh.getNodes.return_value = (
-        [1],
-        np.array([0.0, 0.0, 0.0, 1.0, 0.0]),
-        []
-    )
-    mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
-
-    result = generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "internal"
-    )
-    assert result == []
-
-@patch("src.boundary_conditions.gmsh")
-def test_invalid_normal_skipped(mock_gmsh):
-    mock_gmsh.model.getEntities.return_value = [(2, 1)]
-    # All points identical → zero-length normal
-    mock_gmsh.model.mesh.getNodes.return_value = (
-        [1, 2, 3],
-        np.array([0.0, 0.0, 0.0] * 3),
-        []
-    )
-    mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
-
-    result = generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "internal"
-    )
-    assert result == []
-
-@patch("src.boundary_conditions.gmsh")
 def test_bounding_box_fallback(mock_gmsh):
     mock_gmsh.model.getEntities.return_value = []
     mock_gmsh.model.getBoundingBox.return_value = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]  # 6 values

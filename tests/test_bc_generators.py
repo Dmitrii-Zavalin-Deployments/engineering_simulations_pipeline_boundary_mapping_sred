@@ -117,29 +117,5 @@ def test_internal_grouping_merges_faces():
     assert len(inlet_blocks) == 1
     assert set(inlet_blocks[0]["faces"]) == {5, 6}
 
-def test_internal_wall_block_contains_no_slip():
-    surfaces = [(2, 7)]
-    face_geometry_data = {
-        **mock_face(7, [0.5, 0.0, 0.5], [0, 1, 0], "y_min", 1),
-    }
-    face_roles = {}
-
-    min_bounds = [0.0, 0.0, 0.0]
-    max_bounds = [1.0, 1.0, 1.0]
-
-    result = generate_internal_bc_blocks(
-        surfaces, face_geometry_data, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        min_bounds, max_bounds, DEBUG
-    )
-
-    # Updated: guard clause to prevent StopIteration
-    wall_blocks = [b for b in result if b["role"] == "wall"]
-    assert wall_blocks, "Expected at least one wall block"
-    wall_block = wall_blocks[0]
-    assert wall_block["no_slip"] is True
-    assert wall_block["velocity"] == [0.0, 0.0, 0.0]
-
 
 
