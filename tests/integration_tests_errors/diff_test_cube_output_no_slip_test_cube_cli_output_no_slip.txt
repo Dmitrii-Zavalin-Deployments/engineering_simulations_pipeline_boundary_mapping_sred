@@ -1,0 +1,33 @@
+❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
+
+--- JSON UNIFIED DIFF (Expected vs Generated) ---
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -9,7 +9,8 @@     ],
+     "comment": "Defines inlet flow parameters for velocity and pressure",
+     "faces": [
+-      1
++      1,
++      3
+     ],
+     "pressure": 101325,
+     "role": "inlet",
+@@ -19,19 +20,5 @@       0.0,
+       0.0
+     ]
+-  },
+-  {
+-    "apply_faces": [
+-      "x_max"
+-    ],
+-    "apply_to": [
+-      "pressure"
+-    ],
+-    "comment": "Defines outlet flow behavior with pressure gradient",
+-    "faces": [
+-      3
+-    ],
+-    "role": "outlet",
+-    "type": "neumann"
+   }
+ ]-------------------------------------------------
+
+--- Commit Details: Run 18535538143 / Attempt 1 ---
