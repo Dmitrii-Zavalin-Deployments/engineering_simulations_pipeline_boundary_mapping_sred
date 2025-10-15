@@ -26,26 +26,61 @@ def generate_internal_bc_blocks(
     Returns:
         list: Boundary condition blocks.
     """
-    blocks = []
+    inlet_faces = []
+    outlet_faces = []
+    wall_faces = []
+    inlet_labels = []
+    outlet_labels = []
 
     for dim, face_id in surfaces:
         role, label = face_roles.get(face_id, ("wall", "wall"))
-        metadata = face_geometry_data.get(face_id, {})
+        if role == "inlet":
+            inlet_faces.append(face_id)
+            inlet_labels.append(label)
+        elif role == "outlet":
+            outlet_faces.append(face_id)
+            outlet_labels.append(label)
+        else:
+            wall_faces.append(face_id)
 
-        block = {
-            "id": face_id,
-            "type": role,
-            "label": label,
-            "velocity": velocity if role == "inlet" else [0, 0, 0],
-            "pressure": pressure if role == "outlet" else None,
-            "no_slip": no_slip if role == "wall" else None,
-            "geometry": metadata
-        }
+    blocks = []
 
-        if debug:
-            print(f"[DEBUG] Internal BC block for face {face_id}: {block}")
+    if inlet_faces:
+        blocks.append({
+            "role": "inlet",
+            "type": "dirichlet",
+            "faces": inlet_faces,
+            "apply_to": ["velocity", "pressure"],
+            "comment": "Defines inlet flow parameters for velocity and pressure",
+            "velocity": velocity,
+            "pressure": pressure,
+            "apply_faces": sorted(set(inlet_labels))
+        })
 
-        blocks.append(block)
+    if outlet_faces:
+        blocks.append({
+            "role": "outlet",
+            "type": "neumann",
+            "faces": outlet_faces,
+            "apply_to": ["pressure"],
+            "comment": "Defines outlet flow behavior with pressure gradient",
+            "apply_faces": sorted(set(outlet_labels))
+        })
+
+    if wall_faces:
+        blocks.append({
+            "role": "wall",
+            "type": "dirichlet",
+            "faces": wall_faces,
+            "apply_to": ["velocity"],
+            "comment": "Applies no-slip condition to wall surfaces",
+            "no_slip": no_slip,
+            "apply_faces": ["wall"]
+        })
+
+    if debug:
+        for block in blocks:
+            print(f"[DEBUG] Final BC block: {block}")
 
     return blocks
 
@@ -72,30 +107,23 @@ def generate_external_bc_blocks(
     Returns:
         list: Boundary condition blocks.
     """
+    wall_faces = [face_id for _, face_id in surfaces]
     blocks = []
 
-    for dim, face_id in surfaces:
-        role, label = face_roles.get(face_id, ("wall", "wall"))
+    if wall_faces:
+        blocks.append({
+            "role": "wall",
+            "type": "dirichlet",
+            "faces": wall_faces,
+            "apply_to": ["velocity"],
+            "comment": "Applies no-slip condition to all external walls",
+            "no_slip": no_slip,
+            "apply_faces": ["wall"]
+        })
 
-        block = {
-            "id": face_id,
-            "type": role,
-            "label": label,
-            "velocity": [0, 0, 0],
-            "pressure": None,
-            "no_slip": no_slip if role == "wall" else None,
-            "geometry": {
-                "normal_unit": [0, 0, 0],
-                "face_label": label,
-                "max_index": 0,
-                "p_centroid": [None, None, None]
-            }
-        }
-
-        if debug:
-            print(f"[DEBUG] External BC block for face {face_id}: {block}")
-
-        blocks.append(block)
+    if debug:
+        for block in blocks:
+            print(f"[DEBUG] External BC block: {block}")
 
     return blocks
 
