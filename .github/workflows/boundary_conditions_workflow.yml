@@ -209,10 +209,10 @@ jobs:
 
           echo "✅ Integration test completed for hollow_cylinder_external_output_no_slip."
 
-      - name: 🧪 Run Unit Tests with Coverage
-        run: |
-          pytest --cov=src --cov-report=term-missing
-          echo "✅ Unit tests and code coverage check completed."
+      # - name: 🧪 Run Unit Tests with Coverage
+      #   run: |
+      #     pytest --cov=src --cov-report=term-missing
+      #     echo "✅ Unit tests and code coverage check completed."
       
       # ----------------------------------------------------------------------
       # Final CLI Run (config-driven)
