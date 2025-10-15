@@ -1,3 +1,5 @@
+# src/gmsh_runner.py
+
 import argparse
 import json
 import os
@@ -7,8 +9,6 @@ from src.utils.gmsh_input_check import validate_step_has_volumes, ValidationErro
 
 # ✅ Exposed for test patching
 FLOW_DATA_PATH = "data/testing-input-output/flow_data.json"
-# 🆕 Define the path to the robust GMSH boundary assignment script
-GMSH_FIX_SCRIPT_PATH = "src/gmsh_boundary_fix.geo"
 
 def main():
     parser = argparse.ArgumentParser(description="Gmsh STEP parser for boundary condition metadata")
@@ -21,6 +21,10 @@ def main():
     parser.add_argument("--initial_pressure", type=float, required=True, help="Initial pressure value in Pascals for inlet condition")
     parser.add_argument("--output", type=str, required=True, help="Path to write boundary_conditions.json")
     parser.add_argument("--debug", action="store_true", help="Print full boundary condition structure for debugging")
+
+    # 🆕 Classification sensitivity controls
+    parser.add_argument("--threshold", type=float, default=0.9, help="Surface alignment threshold (default: 0.9)")
+    parser.add_argument("--tolerance", type=float, default=1e-6, help="Coordinate tolerance (default: 1e-6)")
 
     args = parser.parse_args()
     args.debug = True  # ✅ Force debug mode ON
@@ -35,7 +39,8 @@ def main():
     print(f"       Initial pressure: {args.initial_pressure}")
     print(f"       Output path     : {args.output}")
     print(f"       Debug mode      : {args.debug}")
-    print(f"       GMSH Fix Script : {GMSH_FIX_SCRIPT_PATH}") # 🆕 Added print for new path
+    print(f"       Threshold       : {args.threshold}")
+    print(f"       Tolerance       : {args.tolerance}")
 
     flow_data_path = FLOW_DATA_PATH
     if not os.path.isfile(flow_data_path):
@@ -66,9 +71,9 @@ def main():
             no_slip=args.no_slip,
             flow_region=args.flow_region,
             resolution=args.resolution,
-            # 🆕 Pass the path to the GMSH fix script
-            gmsh_fix_script_path=GMSH_FIX_SCRIPT_PATH, 
-            debug=args.debug
+            debug=args.debug,
+            threshold=args.threshold,
+            tolerance=args.tolerance
         )
         print("[DEBUG] Boundary condition generation completed")
 
