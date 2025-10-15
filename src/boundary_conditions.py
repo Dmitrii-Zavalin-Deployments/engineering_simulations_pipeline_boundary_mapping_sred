@@ -128,7 +128,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     if flow_region == "internal":
         return generate_internal_bc_blocks(
             surfaces, face_geometry_data, face_roles, velocity, pressure,
-            no_slip, axis_index, is_positive_flow, min_bounds, max_bounds, debug
+            no_slip, axis_index, is_positive_flow, min_bounds, max_bounds, threshold, debug
         )
     else:
         for face_id in face_roles:

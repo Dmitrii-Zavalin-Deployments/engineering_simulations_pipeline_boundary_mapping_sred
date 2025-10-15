@@ -7,6 +7,7 @@ def generate_internal_bc_blocks(
     velocity, pressure, no_slip,
     axis_index, is_positive_flow,
     min_bounds, max_bounds,
+    threshold=0.9,
     debug=False
 ):
     """
@@ -23,6 +24,7 @@ def generate_internal_bc_blocks(
         is_positive_flow (bool): Direction of flow along axis.
         min_bounds (list): Minimum bounding box coordinates.
         max_bounds (list): Maximum bounding box coordinates.
+        threshold (float): Alignment threshold for wall filtering.
         debug (bool): If True, prints debug info.
 
     Returns:
@@ -45,12 +47,12 @@ def generate_internal_bc_blocks(
         else:
             wall_faces.append(face_id)
 
-    # Filter wall faces to exclude those on y_min, y_max, z_min, z_max
+    # Filter wall faces to exclude those on y_min, y_max, z_min, z_max using threshold
     y_min, y_max = min_bounds[1], max_bounds[1]
     z_min, z_max = min_bounds[2], max_bounds[2]
     filtered_wall_faces = [
         face_id for face_id in wall_faces
-        if is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max)
+        if is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, threshold)
     ]
 
     blocks = []
@@ -63,7 +65,7 @@ def generate_internal_bc_blocks(
             "apply_to": ["velocity", "pressure"],
             "comment": "Defines inlet flow parameters for velocity and pressure",
             "velocity": velocity,
-            "pressure": pressure,
+            "pressure": int(pressure),
             "apply_faces": sorted(set(inlet_labels))
         })
 

@@ -111,30 +111,35 @@ def assign_roles_to_faces(surfaces, x_min, x_max, threshold=0.9, tolerance=1e-6,
 
     return face_roles, face_geometry_data
 
-def is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, tolerance=1e-6):
+
+def is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, threshold=0.9):
     """
-    Determines whether a wall face lies away from Y and Z boundaries.
+    Determines whether a wall face lies away from Y and Z boundaries using alignment threshold.
 
     Args:
         face_id (int): Face identifier.
         face_geometry_data (dict): Metadata dictionary for the face.
         y_min, y_max, z_min, z_max (float): Bounding box limits.
-        tolerance (float): Coordinate tolerance.
+        threshold (float): Alignment threshold (0–1).
 
     Returns:
-        bool: True if face is internal wall, False if on Y/Z boundary.
+        bool: True if face is internal wall, False if aligned with Y/Z boundary.
     """
     centroid = face_geometry_data.get(face_id, {}).get("p_centroid", [None, None, None])
     if centroid is None or None in centroid:
-        return False  # Invalid or missing geometry
+        return False
 
     y, z = centroid[1], centroid[2]
+    y_span = abs(y_max - y_min)
+    z_span = abs(z_max - z_min)
 
-    def near(val, target): return abs(val - target) < tolerance
+    def aligned(val, bound, span):
+        return abs(val - bound) / span >= threshold
 
-    if near(y, y_min) or near(y, y_max) or near(z, z_min) or near(z, z_max):
-        return False  # Lies on Y or Z boundary
+    if aligned(y, y_min, y_span) or aligned(y, y_max, y_span) or aligned(z, z_min, z_span) or aligned(z, z_max, z_span):
+        return False
 
     return True
+
 
 
