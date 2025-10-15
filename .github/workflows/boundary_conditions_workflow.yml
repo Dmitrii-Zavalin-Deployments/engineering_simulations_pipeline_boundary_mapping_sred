@@ -222,10 +222,10 @@ jobs:
           resolution=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['default_resolution'])")
           flow_region=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['flow_region'])")
           no_slip=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['model_properties']['no_slip'])")
-          vx=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][0])")
-          vy=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][1])")
-          vz=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['velocity'][2])")
-          pressure=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['pressure'])")
+          vx=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['initial_velocity'][0])")
+          vy=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['initial_velocity'][1])")
+          vz=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['initial_velocity'][2])")
+          pressure=$(python -c "import json; print(json.load(open('data/testing-input-output/flow_data.json'))['initial_conditions']['initial_pressure'])")
 
           python3 src/gmsh_runner.py \
             --step data/testing-input-output/input.step \
