@@ -2,40 +2,198 @@
   {
     "role": "wall",
     "type": "dirichlet",
-    "faces": [1],
-    "apply_to": ["velocity"],
-    "velocity": [0.0, 0.0, 0.0],
-    "no_slip": true,
-    "comment": "Defines near-wall flow parameters with no-slip condition"
+    "faces": [
+      1
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Obstacle Wall Face 1 with no-slip condition",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "wall"
+    ]
   },
   {
     "role": "wall",
     "type": "dirichlet",
-    "faces": [2],
-    "apply_to": ["velocity"],
-    "velocity": [0.0, 0.0, 0.0],
-    "no_slip": true,
-    "comment": "Defines near-wall flow parameters with no-slip condition"
+    "faces": [
+      2
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Obstacle Wall Face 2 with no-slip condition",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "wall"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      3
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Obstacle Wall Face 3 with no-slip condition",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "wall"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      4
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Obstacle Wall Face 4 with no-slip condition",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "wall"
+    ]
   },
   {
     "role": "inlet",
     "type": "dirichlet",
-    "apply_faces": ["x_min"],
-    "faces": [3],
-    "apply_to": ["velocity", "pressure"],
-    "velocity": [1.0, 0.0, 0.0],
+    "faces": [
+      -1
+    ],
+    "apply_to": [
+      "velocity",
+      "pressure"
+    ],
+    "comment": "Synthesized Far-Field Inlet (boundary of the computational box)",
+    "velocity": [
+      1.0,
+      0.0,
+      0.0
+    ],
     "pressure": 101325,
-    "comment": "Defines inlet flow parameters for velocity and pressure"
+    "apply_faces": [
+      "x_min"
+    ]
   },
   {
     "role": "outlet",
     "type": "neumann",
-    "apply_faces": ["x_max"],
-    "faces": [4],
-    "apply_to": ["pressure"],
-    "comment": "Defines outlet flow behavior with pressure gradient"
+    "faces": [
+      -2
+    ],
+    "apply_to": [
+      "pressure"
+    ],
+    "comment": "Synthesized Far-Field Outlet (boundary of the computational box)",
+    "apply_faces": [
+      "x_max"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      -3
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Synthesized Far-Field Wall (y_min)",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "y_min"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      -4
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Synthesized Far-Field Wall (y_max)",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "y_max"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      -5
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Synthesized Far-Field Wall (z_min)",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "z_min"
+    ]
+  },
+  {
+    "role": "wall",
+    "type": "dirichlet",
+    "faces": [
+      -6
+    ],
+    "apply_to": [
+      "velocity"
+    ],
+    "comment": "Synthesized Far-Field Wall (z_max)",
+    "velocity": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "no_slip": false,
+    "apply_faces": [
+      "z_max"
+    ]
   }
 ]
-
 
 
