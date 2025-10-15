@@ -44,7 +44,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     vmag = math.sqrt(sum(v**2 for v in velocity))
     if vmag == 0:
         raise ValueError("Initial velocity vector cannot be zero.")
-    velocity_unit = [v / vmag for v in velocity]
+    [v / vmag for v in velocity]
 
     axial_velocity_component = max(abs(v) for v in velocity)
     try:
