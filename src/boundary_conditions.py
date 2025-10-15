@@ -59,4 +59,26 @@ def get_surface_faces(debug=False):
     return surfaces
 
 
+def get_x_bounds(debug=False):
+    """
+    Extracts x_min and x_max from the model bounding box.
+
+    Args:
+        debug (bool): If True, prints the extracted bounds.
+
+    Returns:
+        tuple: (x_min, x_max)
+    """
+    bounds = gmsh.model.getBoundingBox(3, 1)
+    if len(bounds) == 7:
+        _, x_min, _, _, x_max, _, _ = bounds
+    else:
+        x_min, _, _, x_max, _, _ = bounds if len(bounds) == 6 else [-1e9, 0, 0, 1e9, 0, 0]
+
+    if debug:
+        print(f"[DEBUG] Bounding box X-range: x_min={x_min}, x_max={x_max}")
+
+    return x_min, x_max
+
+
 
