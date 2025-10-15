@@ -1,16 +1,19 @@
 // ----------------------------------------------------------------------
 // GMSH SCRIPT: ROBUST BOUNDARY ASSIGNMENT VIA PHYSICAL GROUPS
-// This logic defines Inlet/Outlet based on stable coordinates (Xmin/Xmax),
-// which is immune to the mesh distortions caused by broken geometry.
+// Fix: Corrected GetBoundingBox syntax to use array access [0] and [3].
 // ----------------------------------------------------------------------
 
 // Tolerance for floating point comparison (critical for boundary box check)
 Epsilon = 1e-4;
 
-// 1. Get the bounding box of the entire geometry (tags 0, 0, 0 finds the whole model)
-BB_Total = GetBoundingBox(0, 0, 0, 0, 0, 0, 0);
-Xmin_Total = BB_Total.XMin;
-Xmax_Total = BB_Total.XMax;
+// 1. Get the bounding box of the entire geometry.
+// GetBoundingBox(0, 0) retrieves the bounding box for all entities.
+// The result is an array: [Xmin, Ymin, Zmin, Xmax, Ymax, Zmax]
+BB_Total[] = GetBoundingBox(0, 0);
+
+// Access the array elements by index: 0 for Xmin, 3 for Xmax.
+Xmin_Total = BB_Total[0];
+Xmax_Total = BB_Total[3];
 
 // 2. Initialize lists for the three groups
 InletSurfaces[] = {};
@@ -24,16 +27,17 @@ For i In {0:#AllSurfaces[]-1}
 Tag = AllSurfaces[i];
 
 // Get the bounding box for the current Surface
-BB_Surface = GetBoundingBox(2, Tag, 0, 0, 0, 0, 0, 0);
+// The result is an array: [Xmin, Ymin, Zmin, Xmax, Ymax, Zmax]
+BB_Surface[] = GetBoundingBox(2, Tag);
 
 // --- Classification Logic ---
 
-// Inlet: Check if the surface is at the global Xmin
-If (Abs(BB_Surface.XMin - Xmin_Total) < Epsilon)
+// Inlet: Check if the surface is at the global Xmin (compare BB_Surface[0] vs Xmin_Total)
+If (Abs(BB_Surface[0] - Xmin_Total) < Epsilon)
     InletSurfaces[] += {Tag};
 
-// Outlet: Check if the surface is at the global Xmax
-Else If (Abs(BB_Surface.XMax - Xmax_Total) < Epsilon)
+// Outlet: Check if the surface is at the global Xmax (compare BB_Surface[3] vs Xmax_Total)
+Else If (Abs(BB_Surface[3] - Xmax_Total) < Epsilon)
     OutletSurfaces[] += {Tag};
 
 // Wall: Otherwise, it is a Wall
@@ -44,7 +48,6 @@ EndIf
 EndFor
 
 // 3. Create the Physical Groups using stable integer IDs.
-// These IDs (1, 2, 3) are what your Python script must read from the .msh file.
 
 If (#InletSurfaces[] > 0)
 // Physical Tag 1 = Inlet (x_min)
@@ -60,5 +63,3 @@ If (#WallSurfaces[] > 0)
 // Physical Tag 3 = Wall (The rest)
 Physical Surface(3) = WallSurfaces[];
 EndIf
-
-
