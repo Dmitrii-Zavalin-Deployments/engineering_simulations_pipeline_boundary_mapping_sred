@@ -81,7 +81,7 @@ def main():
             raise RuntimeError("❌ Boundary condition generation failed or returned empty result.")
 
         print(f"[INFO] Generated {len(result)} boundary condition blocks.")
-        print(f"[INFO] Roles included: {sorted(set(b['role'] for b in result))}")
+        print(f"[INFO] Roles included: {sorted(set(b['type'] for b in result))}")
 
         print("[DEBUG] Full boundary condition output:")
         print(json.dumps(result, indent=2))
