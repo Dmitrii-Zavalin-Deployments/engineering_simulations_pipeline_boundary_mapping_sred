@@ -111,5 +111,30 @@ def assign_roles_to_faces(surfaces, x_min, x_max, threshold=0.9, tolerance=1e-6,
 
     return face_roles, face_geometry_data
 
+def is_internal_wall(face_id, face_geometry_data, y_min, y_max, z_min, z_max, tolerance=1e-6):
+    """
+    Determines whether a wall face lies away from Y and Z boundaries.
+
+    Args:
+        face_id (int): Face identifier.
+        face_geometry_data (dict): Metadata dictionary for the face.
+        y_min, y_max, z_min, z_max (float): Bounding box limits.
+        tolerance (float): Coordinate tolerance.
+
+    Returns:
+        bool: True if face is internal wall, False if on Y/Z boundary.
+    """
+    centroid = face_geometry_data.get(face_id, {}).get("p_centroid", [None, None, None])
+    if centroid is None or None in centroid:
+        return False  # Invalid or missing geometry
+
+    y, z = centroid[1], centroid[2]
+
+    def near(val, target): return abs(val - target) < tolerance
+
+    if near(y, y_min) or near(y, y_max) or near(z, z_min) or near(z, z_max):
+        return False  # Lies on Y or Z boundary
+
+    return True
 
 
