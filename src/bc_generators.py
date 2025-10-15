@@ -9,7 +9,7 @@ def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, veloci
     boundary_conditions = []
     grouped_blocks = {}
     
-    axis_label = ["x", "y", "z"][axis_index]
+    ["x", "y", "z"][axis_index]
     
     # 1. Recalculate/Override Roles based on bounds (Logic extracted from main function)
     for face_id, data in face_geometry_data.items():
