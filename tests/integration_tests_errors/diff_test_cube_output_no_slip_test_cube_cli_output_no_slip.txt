@@ -1,28 +1,22 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -33,5 +33,23 @@     ],
-     "role": "outlet",
-     "type": "neumann"
-+  },
-+  {
-+    "apply_faces": [
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,7 +1,7 @@ [
+   {
+     "apply_faces": [
+-      "x_min"
 +      "wall"
-+    ],
-+    "apply_to": [
-+      "velocity"
-+    ],
-+    "comment": "Applies no-slip condition to internal wall surfaces",
-+    "faces": [
-+      2,
-+      4,
-+      5,
-+      6
-+    ],
-+    "no_slip": true,
-+    "role": "wall",
-+    "type": "dirichlet"
-   }
- ]-------------------------------------------------
+     ],
+     "apply_to": [
+       "velocity",
+@@ -22,7 +22,7 @@   },
+   {
+     "apply_faces": [
+-      "x_max"
++      "wall"
+     ],
+     "apply_to": [
+       "pressure"
+-------------------------------------------------
 
---- Commit Details: Run 18540941677 / Attempt 1 ---
+--- Commit Details: Run 18541503085 / Attempt 1 ---
