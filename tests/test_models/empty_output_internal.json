@@ -1,4 +1,0 @@
-{
-  "error": "No geometric entities found in the STEP file. Cannot create a geometry mask.",
-  "status": "failure"
-}

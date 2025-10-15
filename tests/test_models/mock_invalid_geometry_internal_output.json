@@ -1,4 +1,0 @@
-{
-  "error": "Failed to parse STEP file: Malformed or unresolvable geometric entities were found (e.g., references to undefined entities #999 and #777).",
-  "status": "failure"
-}
