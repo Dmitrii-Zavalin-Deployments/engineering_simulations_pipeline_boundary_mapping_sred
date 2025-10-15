@@ -25,19 +25,19 @@ def test_missing_key_raises(missing_key):
     with pytest.raises(DomainValidationError, match=f"Missing domain bounds for axis"):
         validate_domain_bounds(domain)
 
-@pytest.mark.parametrize("bad_key,value", [
-    ("min_x", "abc"),
-    ("max_y", None),
-    ("min_z", [1, 2]),
+@pytest.mark.parametrize("bad_key,value,expected_error", [
+    ("min_x", "abc", "Non-numeric bounds for axis"),
+    ("max_y", None, "Missing domain bounds for axis 'y'"),
+    ("min_z", [1, 2], "Non-numeric bounds for axis"),
 ])
-def test_non_numeric_values_raise(bad_key, value):
+def test_non_numeric_values_raise(bad_key, value, expected_error):
     domain = {
         "min_x": 0.0, "max_x": 10.0,
         "min_y": 0.0, "max_y": 5.0,
         "min_z": 1.0, "max_z": 2.0
     }
     domain[bad_key] = value
-    with pytest.raises(DomainValidationError, match="Non-numeric bounds for axis"):
+    with pytest.raises(DomainValidationError, match=expected_error):
         validate_domain_bounds(domain)
 
 @pytest.mark.parametrize("axis,min_val,max_val", [

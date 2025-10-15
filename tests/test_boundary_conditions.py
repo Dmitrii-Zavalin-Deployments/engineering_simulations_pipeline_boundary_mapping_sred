@@ -56,9 +56,10 @@ def test_external_flow_triggers_external_generator(mock_gmsh):
 @patch("src.boundary_conditions.gmsh")
 def test_missing_nodes_skipped_safely(mock_gmsh):
     mock_gmsh.model.getEntities.return_value = [(2, 1)]
+    # Only 5 values (< 9), should trigger skip
     mock_gmsh.model.mesh.getNodes.return_value = (
         [1],
-        np.array([0.0, 0.0, 0.0]),  # insufficient for normal calculation
+        np.array([0.0, 0.0, 0.0, 1.0, 0.0]),
         []
     )
     mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
@@ -71,9 +72,10 @@ def test_missing_nodes_skipped_safely(mock_gmsh):
 @patch("src.boundary_conditions.gmsh")
 def test_invalid_normal_skipped(mock_gmsh):
     mock_gmsh.model.getEntities.return_value = [(2, 1)]
+    # All points identical → zero-length normal
     mock_gmsh.model.mesh.getNodes.return_value = (
         [1, 2, 3],
-        np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),  # zero-length vectors
+        np.array([0.0, 0.0, 0.0] * 3),
         []
     )
     mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
