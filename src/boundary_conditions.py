@@ -120,8 +120,10 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
     axis_index = max(range(3), key=lambda i: abs(velocity[i]))
     is_positive_flow = velocity[axis_index] > 0
-    min_bounds = gmsh.model.getBoundingBox(3, 1)[1:4]
-    max_bounds = gmsh.model.getBoundingBox(3, 1)[4:7]
+
+    bbox = gmsh.model.getBoundingBox(3, 1)
+    min_bounds = [bbox[0], bbox[1], bbox[2]]  # x_min, y_min, z_min
+    max_bounds = [bbox[3], bbox[4], bbox[5]]  # x_max, y_max, z_max
 
     if flow_region == "internal":
         return generate_internal_bc_blocks(
