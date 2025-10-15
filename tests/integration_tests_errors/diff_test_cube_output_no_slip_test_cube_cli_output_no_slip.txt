@@ -1,15 +1,7 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -11,7 +11,7 @@     "faces": [
-       1
-     ],
--    "pressure": 101325,
-+    "pressure": 101325.0,
-     "role": "inlet",
-     "type": "dirichlet",
-     "velocity": [
-@@ -33,5 +33,23 @@     ],
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -33,5 +33,23 @@     ],
      "role": "outlet",
      "type": "neumann"
 +  },
@@ -33,4 +25,4 @@
    }
  ]-------------------------------------------------
 
---- Commit Details: Run 18540585735 / Attempt 1 ---
+--- Commit Details: Run 18540941677 / Attempt 1 ---
