@@ -9,7 +9,7 @@ def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, veloci
     boundary_conditions = []
     grouped_blocks = {}
     
-    # axis_label = ["x", "y", "z"][axis_index] # Not used, commented out
+    ["x", "y", "z"][axis_index]
     
     # 1. Recalculate/Override Roles based on bounds (Logic extracted from main function)
     for face_id, data in face_geometry_data.items():
@@ -21,57 +21,42 @@ def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, veloci
         min_bound = min_bounds[face_axis_index]
         max_bound = max_bounds[face_axis_index]
 
-        role = "wall" # Default assumption
-        face_label_fixed = "wall" 
+        role = "wall" 
+        face_label_fixed = face_label 
 
-        # The bounding plane checks below are sufficient for role assignment
-        is_min_bound_face = abs(coord_val - min_bound) < TOL
-        is_max_bound_face = abs(coord_val - max_bound) < TOL
+        is_min_on_any_axis = any(abs(data["p_centroid"][i] - min_bounds[i]) < TOL for i in range(3))
+        is_max_on_any_axis = any(abs(data["p_centroid"][i] - max_bounds[i]) < TOL for i in range(3))
+        is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
 
-        # -----------------------------------------------------------
-        # CORRECTED Role Assignment Logic
-        # -----------------------------------------------------------
+        is_on_min_of_max_axis = abs(coord_val - min_bound) < TOL
+        is_on_max_of_max_axis = abs(coord_val - max_bound) < TOL
+
+        if is_on_min_of_max_axis:
+            face_label_fixed = f"{face_axis_label}_min"
+        elif is_on_max_of_max_axis:
+            face_label_fixed = f"{face_axis_label}_max"
 
         if face_axis_index == axis_index:
-            # This face is aligned with the flow axis (e.g., X_min, X_max if flow is X)
-            if is_min_bound_face:
-                # If flow is positive (+X), INLET is at X_min. If flow is negative (-X), OUTLET is at X_min.
-                role = "inlet" if is_positive_flow else "outlet"
-                face_label_fixed = f"{face_axis_label}_min"
-            elif is_max_bound_face:
-                # If flow is positive (+X), OUTLET is at X_max. If flow is negative (-X), INLET is at X_max.
-                role = "outlet" if is_positive_flow else "inlet"
-                face_label_fixed = f"{face_axis_label}_max"
+            if is_on_bounding_plane:
+                role = "inlet" if is_positive_flow == is_on_min_of_max_axis else "outlet"
             else:
-                # Internal wall feature oriented on the flow axis (e.g., a cap or internal vertical segment)
                 role = "wall"
-                face_label_fixed = "wall" # Grouped with other internal walls
-        
-        elif is_min_bound_face or is_max_bound_face:
-            # This face is on a perpendicular bounding plane (e.g., Y_min, Z_max faces on the box boundary)
-            # In internal flow, these bounding box faces should typically be SKIPPED
-            # as the flow is enclosed by the internal geometry walls.
+                face_label_fixed = "wall" 
+        elif is_on_bounding_plane:
             role = "skip"
-            face_label_fixed = "skip" 
-
         else:
-            # All other faces are interior walls, curved surfaces, or features not on the bounding box.
             role = "wall"
             face_label_fixed = "wall" 
         
-        # Final assignment
         face_roles[face_id] = (role, face_label_fixed)
     # End of Role Override
 
     # 2. Group faces and build blocks
     for tag in surfaces:
         face_id = tag[1]
-        # face_label now holds the correct geometric identifier (e.g., 'x_min') or 'wall' or 'skip'
         role, face_label = face_roles.get(face_id, ("wall", "wall")) 
 
         if role == "skip":
-            if debug:
-                 print(f"[DEBUG] Skipping face {face_id} with role 'skip'")
             continue
             
         group_key = (role, face_label)
@@ -81,7 +66,6 @@ def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, veloci
                 "role": role,
                 "type": "dirichlet" if role in ["inlet", "wall"] else "neumann",
                 "faces": [face_id],
-                # Outlet only applies to pressure (Neumann). Inlet applies to velocity/pressure (Dirichlet).
                 "apply_to": ["velocity", "pressure"] if role == "inlet" else ["pressure"] if role == "outlet" else ["velocity"],
                 "comment": {
                     "inlet": "Defines inlet flow parameters for velocity and pressure",
@@ -90,23 +74,17 @@ def generate_internal_bc_blocks(surfaces, face_geometry_data, face_roles, veloci
                 }.get(role, "Boundary condition defined by flow logic")
             }
             
-            # Use face_label for apply_faces, which will be 'x_min', 'x_max' for Inlet/Outlet, 
-            # and 'wall' for internal walls.
             apply_faces_list = []
             if face_label in ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]:
                 apply_faces_list = [face_label]
             elif role == "wall" and face_label == "wall":
                 apply_faces_list = ["wall"]
-            else:
-                # Fallback, should not happen with corrected logic
-                apply_faces_list = ["wall"] 
 
             if role == "inlet":
                 block["velocity"] = velocity
                 block["pressure"] = int(pressure)
             elif role == "outlet":
-                # apply_to is already set to ["pressure"] above
-                pass 
+                block["apply_to"] = ["pressure"] 
             elif role == "wall":
                 block["velocity"] = [0.0, 0.0, 0.0]
                 block["no_slip"] = no_slip
