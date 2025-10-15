@@ -1,6 +1,5 @@
 # src/geometry.py
 
-import numpy as np
 
 def classify_face_label(normal, face_id, debug):
     """
