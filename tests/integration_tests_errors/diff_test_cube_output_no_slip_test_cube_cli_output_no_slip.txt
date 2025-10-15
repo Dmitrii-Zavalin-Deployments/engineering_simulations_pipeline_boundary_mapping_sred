@@ -1,22 +1,25 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for test_cube_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,7 +1,7 @@ [
+--- test_cube_output_no_slip.json+++ test_cube_cli_output_no_slip.json@@ -1,8 +1,6 @@ [
    {
-     "apply_faces": [
+-    "apply_faces": [
 -      "x_min"
-+      "wall"
-     ],
+-    ],
++    "apply_faces": "x_min",
      "apply_to": [
        "velocity",
-@@ -22,7 +22,7 @@   },
+       "pressure"
+@@ -21,9 +19,7 @@     ]
+   },
    {
-     "apply_faces": [
+-    "apply_faces": [
 -      "x_max"
-+      "wall"
-     ],
+-    ],
++    "apply_faces": "x_max",
      "apply_to": [
        "pressure"
+     ],
 -------------------------------------------------
 
---- Commit Details: Run 18541503085 / Attempt 1 ---
+--- Commit Details: Run 18541729968 / Attempt 1 ---
