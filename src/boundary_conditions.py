@@ -1,6 +1,13 @@
 # src/boundary_conditions.py
 
 import gmsh
+from .geometry import (
+    assign_roles_to_faces
+)
+from .bc_generators import (
+    generate_internal_bc_blocks,
+    generate_external_bc_blocks
+)
 
 def load_geometry(step_path, debug=False):
     """
@@ -79,6 +86,55 @@ def get_x_bounds(debug=False):
         print(f"[DEBUG] Bounding box X-range: x_min={x_min}, x_max={x_max}")
 
     return x_min, x_max
+
+
+def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_region,
+                                 padding_factor=0, resolution=None,
+                                 threshold=0.9, tolerance=1e-6, debug=False):
+    """
+    Main entry point that orchestrates boundary condition generation.
+
+    Args:
+        step_path (str): Path to STEP file.
+        velocity (list): Initial velocity vector.
+        pressure (float): Initial pressure value.
+        no_slip (bool): Whether to apply no-slip condition.
+        flow_region (str): 'internal' or 'external'.
+        padding_factor (float): Padding multiplier for external flow.
+        resolution (float): Mesh resolution.
+        threshold (float): Alignment threshold.
+        tolerance (float): Coordinate tolerance.
+        debug (bool): If True, prints debug information.
+
+    Returns:
+        list: Boundary condition blocks.
+    """
+    load_geometry(step_path, debug)
+    generate_mesh(resolution, debug)
+    surfaces = get_surface_faces(debug)
+    x_min, x_max = get_x_bounds(debug)
+
+    face_roles, face_geometry_data = assign_roles_to_faces(
+        surfaces, x_min, x_max, threshold, tolerance, debug
+    )
+
+    axis_index = max(range(3), key=lambda i: abs(velocity[i]))
+    is_positive_flow = velocity[axis_index] > 0
+    min_bounds = gmsh.model.getBoundingBox(3, 1)[1:4]
+    max_bounds = gmsh.model.getBoundingBox(3, 1)[4:7]
+
+    if flow_region == "internal":
+        return generate_internal_bc_blocks(
+            surfaces, face_geometry_data, face_roles, velocity, pressure,
+            no_slip, axis_index, is_positive_flow, min_bounds, max_bounds, debug
+        )
+    else:
+        for face_id in face_roles:
+            face_roles[face_id] = ("wall", "wall")
+        return generate_external_bc_blocks(
+            surfaces, face_roles, velocity, pressure,
+            no_slip, axis_index, is_positive_flow, debug
+        )
 
 
 
