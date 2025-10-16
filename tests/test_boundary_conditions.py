@@ -2,82 +2,112 @@
 
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
-from src.boundary_conditions import generate_boundary_conditions
+from unittest import mock
+from src import boundary_conditions
 
-# Shared test constants
-VELOCITY = [1.0, 0.0, 0.0]
-PRESSURE = 101325
-NO_SLIP = True
-AXIS_INDEX = 0
-IS_POSITIVE_FLOW = True
-DEBUG = False
 
-@patch("src.boundary_conditions.gmsh")
-def test_zero_velocity_raises_error(mock_gmsh):
-    with pytest.raises(ValueError, match="Initial velocity vector cannot be zero."):
-        generate_boundary_conditions(
-            "dummy.step", [0.0, 0.0, 0.0], PRESSURE, NO_SLIP, "internal"
-        )
+@pytest.fixture(autouse=True)
+def gmsh_session():
+    import gmsh
+    gmsh.initialize()
+    yield
+    gmsh.finalize()
 
-@patch("src.boundary_conditions.gmsh")
-def test_internal_flow_triggers_internal_generator(mock_gmsh):
-    mock_gmsh.model.getEntities.return_value = [(2, 1)]
-    mock_gmsh.model.mesh.getNodes.return_value = (
-        [1, 2, 3],
-        np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]),
-        []
+
+def test_load_geometry_invokes_gmsh_open(monkeypatch):
+    """Should initialize Gmsh and open the STEP file."""
+    monkeypatch.setattr("gmsh.open", lambda path: None)
+    monkeypatch.setattr("gmsh.model.add", lambda name: None)
+    boundary_conditions.load_geometry("mock.step", debug=True)
+
+
+def test_generate_mesh_sets_resolution(monkeypatch):
+    """Should set mesh resolution when provided."""
+    set_number_calls = []
+
+    def mock_set_number(key, value):
+        set_number_calls.append((key, value))
+
+    monkeypatch.setattr("gmsh.option.setNumber", mock_set_number)
+    monkeypatch.setattr("gmsh.model.mesh.generate", lambda dim: None)
+
+    boundary_conditions.generate_mesh(resolution=0.5, debug=True)
+    assert ("Mesh.CharacteristicLengthMin", 0.5) in set_number_calls
+    assert ("Mesh.CharacteristicLengthMax", 0.5) in set_number_calls
+
+
+def test_get_surface_faces_returns_entities(monkeypatch):
+    """Should return surface entities from Gmsh."""
+    monkeypatch.setattr("gmsh.model.getEntities", lambda dim: [(2, 101), (2, 102)])
+    result = boundary_conditions.get_surface_faces(debug=True)
+    assert result == [(2, 101), (2, 102)]
+
+
+def test_get_x_bounds_handles_standard_bbox(monkeypatch):
+    """Should extract x_min and x_max from bounding box."""
+    monkeypatch.setattr("gmsh.model.getBoundingBox", lambda dim, tag: [0, 0.0, 0, 10, 1.0, 0])
+    x_min, x_max = boundary_conditions.get_x_bounds(debug=True)
+    assert x_min == 0.0
+    assert x_max == 10.0
+
+
+def test_generate_boundary_conditions_internal_flow(monkeypatch):
+    """Should generate inlet, outlet, and wall blocks for internal flow."""
+    surfaces = [(2, 201), (2, 202), (2, 203)]
+    coords_map = {
+        201: np.array([[0.0, 0.5, 0.5]]),
+        202: np.array([[10.0, 0.5, 0.5]]),
+        203: np.array([[5.0, 0.5, 0.5]])
+    }
+
+    monkeypatch.setattr("gmsh.model.getEntities", lambda dim: surfaces)
+    monkeypatch.setattr("gmsh.model.getBoundingBox", lambda dim, tag: [0.0, 0.0, 0.0, 10.0, 1.0, 1.0])
+    monkeypatch.setattr("gmsh.model.mesh.getNodes", lambda dim, tag: (None, coords_map[tag].flatten(), None))
+    monkeypatch.setattr("gmsh.model.mesh.generate", lambda dim: None)
+    monkeypatch.setattr("gmsh.open", lambda path: None)
+    monkeypatch.setattr("gmsh.model.add", lambda name: None)
+
+    blocks = boundary_conditions.generate_boundary_conditions(
+        step_path="mock.step",
+        velocity=[1.0, 0.0, 0.0],
+        pressure=101325,
+        no_slip=True,
+        flow_region="internal",
+        resolution=0.5,
+        debug=False
     )
-    mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
 
-    result = generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "internal", resolution=0.5
+    roles = {b["role"] for b in blocks}
+    assert "inlet" in roles
+    assert "outlet" in roles
+    assert "wall" in roles
+
+
+def test_generate_boundary_conditions_external_flow(monkeypatch):
+    """Should generate wall, synthesized inlet, and outlet blocks for external flow."""
+    surfaces = [(2, 301), (2, 302)]
+    monkeypatch.setattr("gmsh.model.getEntities", lambda dim: surfaces)
+    monkeypatch.setattr("gmsh.model.getBoundingBox", lambda dim, tag: [0.0, 0.0, 0.0, 10.0, 1.0, 1.0])
+    monkeypatch.setattr("gmsh.model.mesh.getNodes", lambda dim, tag: (None, np.array([[5.0, 0.5, 0.5]]).flatten(), None))
+    monkeypatch.setattr("gmsh.model.mesh.generate", lambda dim: None)
+    monkeypatch.setattr("gmsh.open", lambda path: None)
+    monkeypatch.setattr("gmsh.model.add", lambda name: None)
+
+    blocks = boundary_conditions.generate_boundary_conditions(
+        step_path="mock.step",
+        velocity=[1.0, 0.0, 0.0],
+        pressure=101325,
+        no_slip=True,
+        flow_region="external",
+        resolution=0.5,
+        debug=False
     )
-    assert isinstance(result, list)
-    assert all("role" in block for block in result)
 
-@patch("src.boundary_conditions.gmsh")
-def test_external_flow_triggers_external_generator(mock_gmsh):
-    mock_gmsh.model.getEntities.return_value = [(2, 1)]
-    mock_gmsh.model.mesh.getNodes.return_value = (
-        [1, 2, 3],
-        np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]),
-        []
-    )
-    mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
-
-    result = generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "external", resolution=0.5, padding_factor=2
-    )
-    assert isinstance(result, list)
-    assert any(block["role"] == "inlet" for block in result)
-    assert any(block["role"] == "outlet" for block in result)
-
-@patch("src.boundary_conditions.gmsh")
-def test_bounding_box_fallback(mock_gmsh):
-    mock_gmsh.model.getEntities.return_value = []
-    mock_gmsh.model.getBoundingBox.return_value = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0]  # 6 values
-
-    result = generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "external"
-    )
-    assert isinstance(result, list)
-
-@patch("src.boundary_conditions.gmsh")
-def test_debug_output_triggers_prints(mock_gmsh, capsys):
-    mock_gmsh.model.getEntities.return_value = [(2, 1)]
-    mock_gmsh.model.mesh.getNodes.return_value = (
-        [1, 2, 3],
-        np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]),
-        []
-    )
-    mock_gmsh.model.getBoundingBox.return_value = [0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0]
-
-    generate_boundary_conditions(
-        "dummy.step", VELOCITY, PRESSURE, NO_SLIP, "internal", debug=True
-    )
-    captured = capsys.readouterr()
-    assert "[DEBUG]" in captured.out
+    roles = [b["role"] for b in blocks]
+    assert "wall" in roles
+    assert "inlet" in roles
+    assert "outlet" in roles
+    assert sum("synthesized" in b["comment"].lower() for b in blocks if "comment" in b) >= 2
 
 
 

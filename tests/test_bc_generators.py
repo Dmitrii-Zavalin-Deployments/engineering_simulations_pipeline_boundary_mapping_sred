@@ -1,4 +1,4 @@
-# tests/unit/test_bc_generators.py
+# tests/test_bc_generators.py
 
 import pytest
 from src import bc_generators
