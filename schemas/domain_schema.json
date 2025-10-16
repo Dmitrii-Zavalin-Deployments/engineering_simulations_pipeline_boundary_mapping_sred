@@ -4,7 +4,7 @@
   "title": "Boundary Conditions Schema",
   "description": "Schema for validating boundary condition metadata in simulation pipelines. Supports inlet, outlet, and wall definitions with physical parameters.",
   "type": "array",
-  "minItems": 3,
+  "minItems": 1,
   "items": {
     "type": "object",
     "required": ["role", "type", "apply_faces", "apply_to", "faces"],
@@ -20,20 +20,27 @@
         "description": "Type of boundary condition"
       },
       "apply_faces": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
-        },
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": ["wall", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+            }
+          }
+        ],
         "description": "Faces to which the condition is applied"
       },
       "faces": {
         "type": "array",
         "items": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
-        "description": "List of face IDs associated with boundary conditions"
+        "description": "List of face IDs associated with boundary conditions (can include negative IDs for synthesized boundaries)"
       },
       "apply_to": {
         "type": "array",
@@ -45,8 +52,8 @@
       },
       "pressure": {
         "type": "number",
-        "minimum": -1e6,
-        "maximum": 1e6,
+        "minimum": -1000000,
+        "maximum": 1000000,
         "description": "Pressure value for the boundary condition (Pa)"
       },
       "velocity": {
