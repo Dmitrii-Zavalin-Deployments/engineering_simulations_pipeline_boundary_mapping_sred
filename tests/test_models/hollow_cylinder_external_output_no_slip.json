@@ -3,72 +3,12 @@
     "role": "wall",
     "type": "dirichlet",
     "faces": [
-      1
+      1, 2, 3, 4
     ],
     "apply_to": [
       "velocity"
     ],
     "comment": "Obstacle Wall Face 1 with no-slip condition",
-    "velocity": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "no_slip": false,
-    "apply_faces": [
-      "wall"
-    ]
-  },
-  {
-    "role": "wall",
-    "type": "dirichlet",
-    "faces": [
-      2
-    ],
-    "apply_to": [
-      "velocity"
-    ],
-    "comment": "Obstacle Wall Face 2 with no-slip condition",
-    "velocity": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "no_slip": false,
-    "apply_faces": [
-      "wall"
-    ]
-  },
-  {
-    "role": "wall",
-    "type": "dirichlet",
-    "faces": [
-      3
-    ],
-    "apply_to": [
-      "velocity"
-    ],
-    "comment": "Obstacle Wall Face 3 with no-slip condition",
-    "velocity": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "no_slip": false,
-    "apply_faces": [
-      "wall"
-    ]
-  },
-  {
-    "role": "wall",
-    "type": "dirichlet",
-    "faces": [
-      4
-    ],
-    "apply_to": [
-      "velocity"
-    ],
-    "comment": "Obstacle Wall Face 4 with no-slip condition",
     "velocity": [
       0.0,
       0.0,
