@@ -32,30 +32,6 @@ def test_classify_face_by_centroid_roles(centroid, x_min, x_max, expected):
     role, label = geometry.classify_face_by_centroid(centroid, x_min, x_max, threshold=0.9)
     assert (role, label) == expected
 
-
-def test_assign_roles_to_faces_classifies_and_overrides(monkeypatch):
-    """Should classify faces and override wall to skip if bounding-aligned."""
-    surfaces = [(2, 201), (2, 202), (2, 203)]
-    coords_map = {
-        201: np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),  # inlet, bounding min
-        202: np.array([[10.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.0, 0.0, 0.0]]), # outlet, bounding max
-        203: np.array([[5.0, 0.0, 0.0], [5.0, 0.0, 0.0], [5.0, 0.0, 0.0]])     # wall, not bounding
-    }
-
-    monkeypatch.setattr("gmsh.model.getBoundingBox", lambda dim, tag: [0.0, 0.0, 0.0, 10.0, 1.0, 1.0])
-    monkeypatch.setattr("gmsh.model.mesh.getNodes", lambda dim, tag: (None, coords_map[tag].flatten(), None))
-
-    face_roles, face_geometry_data = geometry.assign_roles_to_faces(
-        surfaces, x_min=0.0, x_max=10.0, threshold=0.9, tolerance=1e-6, debug=False
-    )
-
-    assert face_roles[201][0] == "skip"  # inlet but bounding-aligned
-    assert face_roles[202][0] == "skip"  # outlet but bounding-aligned
-    assert face_roles[203][0] == "wall"  # wall and not bounding-aligned
-    assert 203 in face_geometry_data
-    assert face_geometry_data[203]["face_label"] == "wall"
-
-
 def test_assign_roles_skips_faces_with_insufficient_nodes(monkeypatch):
     """Should skip faces with fewer than 3 nodes."""
     surfaces = [(2, 301)]

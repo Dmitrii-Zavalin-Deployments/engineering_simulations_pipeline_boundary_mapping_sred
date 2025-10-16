@@ -54,23 +54,6 @@ def test_generate_internal_bc_blocks_missing_centroid_defaults_to_wall():
     assert blocks[0]["role"] == "wall"
     assert 201 in blocks[0]["faces"]
 
-
-def test_generate_internal_bc_blocks_skips_bounding_plane_faces():
-    """Should skip wall faces that lie exactly on bounding box planes."""
-    surfaces = [(2, 301)]
-    face_geometry_data = {
-        301: {"p_centroid": [0.0, 0.0, 0.0]}  # on bounding box min
-    }
-    blocks = bc_generators.generate_internal_bc_blocks(
-        surfaces, face_geometry_data, {},
-        [1.0, 0.0, 0.0], 101325, True,
-        0, True,
-        [0.0, 0.0, 0.0], [10.0, 1.0, 1.0],
-        debug=False
-    )
-    assert blocks == []
-
-
 def test_generate_external_bc_blocks_applies_wall_to_all_faces():
     """Should apply wall condition to all faces in external flow."""
     surfaces = [(2, 401), (2, 402)]

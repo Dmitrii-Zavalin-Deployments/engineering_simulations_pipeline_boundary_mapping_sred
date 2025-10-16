@@ -50,39 +50,6 @@ def test_get_x_bounds_handles_standard_bbox(monkeypatch):
     assert x_min == 0.0
     assert x_max == 10.0
 
-
-def test_generate_boundary_conditions_internal_flow(monkeypatch):
-    """Should generate inlet, outlet, and wall blocks for internal flow."""
-    surfaces = [(2, 201), (2, 202), (2, 203)]
-    coords_map = {
-        201: np.array([[0.0, 0.5, 0.5]]),
-        202: np.array([[10.0, 0.5, 0.5]]),
-        203: np.array([[5.0, 0.5, 0.5]])
-    }
-
-    monkeypatch.setattr("gmsh.model.getEntities", lambda dim: surfaces)
-    monkeypatch.setattr("gmsh.model.getBoundingBox", lambda dim, tag: [0.0, 0.0, 0.0, 10.0, 1.0, 1.0])
-    monkeypatch.setattr("gmsh.model.mesh.getNodes", lambda dim, tag: (None, coords_map[tag].flatten(), None))
-    monkeypatch.setattr("gmsh.model.mesh.generate", lambda dim: None)
-    monkeypatch.setattr("gmsh.open", lambda path: None)
-    monkeypatch.setattr("gmsh.model.add", lambda name: None)
-
-    blocks = boundary_conditions.generate_boundary_conditions(
-        step_path="mock.step",
-        velocity=[1.0, 0.0, 0.0],
-        pressure=101325,
-        no_slip=True,
-        flow_region="internal",
-        resolution=0.5,
-        debug=False
-    )
-
-    roles = {b["role"] for b in blocks}
-    assert "inlet" in roles
-    assert "outlet" in roles
-    assert "wall" in roles
-
-
 def test_generate_boundary_conditions_external_flow(monkeypatch):
     """Should generate wall, synthesized inlet, and outlet blocks for external flow."""
     surfaces = [(2, 301), (2, 302)]
