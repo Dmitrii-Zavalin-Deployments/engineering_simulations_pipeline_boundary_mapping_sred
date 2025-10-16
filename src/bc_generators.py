@@ -110,7 +110,7 @@ def generate_internal_bc_blocks(
             "comment": "Applies no-slip condition to internal wall surfaces",
             "no_slip": no_slip,
             "velocity": [0.0, 0.0, 0.0],
-            "apply_faces": "wall"
+            "apply_faces": ["wall"]
         })
 
     if debug:
