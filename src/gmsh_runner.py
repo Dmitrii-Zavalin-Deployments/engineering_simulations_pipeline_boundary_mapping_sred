@@ -23,8 +23,8 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Print full boundary condition structure for debugging")
 
     # 🆕 Classification sensitivity controls
-    parser.add_argument("--threshold", type=float, default=0.9, help="Surface alignment threshold (default: 0.9)")
-    parser.add_argument("--tolerance", type=float, default=1e-6, help="Coordinate tolerance (default: 1e-6)")
+    parser.add_argument("--threshold", type=float, default=0.9, help="Centroid proximity threshold (default: 0.9)")
+    parser.add_argument("--tolerance", type=float, default=1e-6, help="Coordinate tolerance for bounding plane checks (default: 1e-6)")
 
     args = parser.parse_args()
     args.debug = True  # ✅ Force debug mode ON

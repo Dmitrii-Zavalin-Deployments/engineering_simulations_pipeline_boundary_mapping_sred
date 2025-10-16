@@ -3,75 +3,13 @@
 import gmsh
 import numpy as np
 
-def get_x_coords(face_id):
+def build_face_metadata(face_id, coords, label):
     """
-    Returns the X-coordinates of all nodes on a given surface.
-
-    Args:
-        face_id (int): The tag of the surface entity.
-
-    Returns:
-        np.ndarray: Array of X-coordinates for the surface's nodes.
-    """
-    try:
-        _, node_coords, _ = gmsh.model.mesh.getNodes(2, face_id)
-        coords = node_coords.reshape(-1, 3)
-        return coords[:, 0]
-    except Exception:
-        return np.array([])
-
-
-def classify_face(x_coords, x_min, x_max, threshold=0.9, tolerance=1e-6, debug=False):
-    """
-    Classifies a face as 'inlet', 'outlet', or 'wall' based on X-coordinate alignment.
-
-    Args:
-        x_coords (np.ndarray): X-coordinates of the face's nodes.
-        x_min (float): Minimum X-bound of the model.
-        x_max (float): Maximum X-bound of the model.
-        threshold (float): Ratio threshold for alignment.
-        tolerance (float): Coordinate tolerance for matching.
-        debug (bool): If True, prints classification info.
-
-    Returns:
-        tuple: (role, label) where role is 'inlet', 'outlet', or 'wall', and label is 'x_min', 'x_max', or 'wall'.
-    """
-    def aligned(x, anchor): return abs(x - anchor) < tolerance
-
-    count_min = sum(aligned(x, x_min) for x in x_coords)
-    count_max = sum(aligned(x, x_max) for x in x_coords)
-
-    ratio_min = count_min / len(x_coords) if len(x_coords) > 0 else 0
-    ratio_max = count_max / len(x_coords) if len(x_coords) > 0 else 0
-
-    if debug:
-        print(f"[DEBUG_CLASSIFY] x_min = {x_min:.6f}, x_max = {x_max:.6f}")
-        print(f"[DEBUG_CLASSIFY] count_min = {count_min}, ratio_min = {ratio_min:.4f}")
-        print(f"[DEBUG_CLASSIFY] count_max = {count_max}, ratio_max = {ratio_max:.4f}")
-        print(f"[DEBUG_CLASSIFY] Threshold = {threshold}, Tolerance = {tolerance}")
-
-    if ratio_min >= threshold:
-        if debug:
-            print(f"[DEBUG_CLASSIFY] → Classified as INLET (x_min)")
-        return "inlet", "x_min"
-    elif ratio_max >= threshold:
-        if debug:
-            print(f"[DEBUG_CLASSIFY] → Classified as OUTLET (x_max)")
-        return "outlet", "x_max"
-    else:
-        if debug:
-            print(f"[DEBUG_CLASSIFY] → Classified as WALL")
-        return "wall", "wall"
-
-
-def build_face_metadata(face_id, coords, role, label):
-    """
-    Constructs the metadata dictionary for a classified face.
+    Constructs the metadata dictionary for a face.
 
     Args:
         face_id (int): The tag of the surface entity.
         coords (np.ndarray): Full 3D coordinates of the face's nodes.
-        role (str): Assigned role ('inlet', 'outlet', 'wall').
         label (str): Assigned label ('x_min', 'x_max', 'wall').
 
     Returns:
@@ -88,6 +26,36 @@ def build_face_metadata(face_id, coords, role, label):
         "max_index": 0,
         "p_centroid": p_centroid
     }
+
+
+def classify_face_by_centroid(centroid, x_min, x_max, threshold=0.9, debug=False):
+    """
+    Classifies a face as 'inlet', 'outlet', or 'wall' based on centroid X-position.
+
+    Args:
+        centroid (list): Centroid coordinates [x, y, z].
+        x_min (float): Minimum X-bound of the model.
+        x_max (float): Maximum X-bound of the model.
+        threshold (float): Ratio threshold for alignment.
+        debug (bool): If True, prints classification info.
+
+    Returns:
+        tuple: (role, label)
+    """
+    x = centroid[0]
+    x_span = abs(x_max - x_min)
+    ratio_min = abs(x - x_min) / x_span if x_span > 0 else 1.0
+    ratio_max = abs(x - x_max) / x_span if x_span > 0 else 1.0
+
+    if debug:
+        print(f"[DEBUG_CLASSIFY] Centroid X = {x:.6f}, ratio_min = {ratio_min:.4f}, ratio_max = {ratio_max:.4f}")
+
+    if ratio_min < (1 - threshold):
+        return "inlet", "x_min"
+    elif ratio_max < (1 - threshold):
+        return "outlet", "x_max"
+    else:
+        return "wall", "wall"
 
 
 def assign_roles_to_faces(surfaces, x_min, x_max, threshold=0.9, tolerance=1e-6, debug=False):
@@ -127,16 +95,9 @@ def assign_roles_to_faces(surfaces, x_min, x_max, threshold=0.9, tolerance=1e-6,
                 print(f"[DEBUG] Face {face_id}: Skipped due to insufficient nodes ({coords.shape[0]}).")
             continue
 
-        x_coords = coords[:, 0]
-        if debug:
-            print(f"[DEBUG] Face {face_id}: Node count = {len(x_coords)}")
-            print(f"[DEBUG] Face {face_id}: x_min = {x_min:.6f}, x_max = {x_max:.6f}")
-            print(f"[DEBUG] Face {face_id}: X-coords sample = {x_coords[:5]}...")
-
-        role, label = classify_face(x_coords, x_min, x_max, threshold, tolerance, debug)
-
-        metadata = build_face_metadata(face_id, coords, role, label)
-        centroid = metadata["p_centroid"]
+        centroid = np.mean(coords, axis=0).tolist()
+        role, label = classify_face_by_centroid(centroid, x_min, x_max, threshold, debug)
+        metadata = build_face_metadata(face_id, coords, label)
 
         if debug:
             print(f"[DEBUG] Face {face_id}: Centroid = {centroid}")
