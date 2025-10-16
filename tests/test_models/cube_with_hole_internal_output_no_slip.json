@@ -21,6 +21,20 @@
     ]
   },
   {
+    "role": "outlet",
+    "type": "neumann",
+    "faces": [
+      7
+    ],
+    "apply_to": [
+      "pressure"
+    ],
+    "comment": "Defines outlet flow behavior with pressure gradient",
+    "apply_faces": [
+      "x_max"
+    ]
+  },
+  {
     "role": "wall",
     "type": "dirichlet",
     "faces": [
@@ -38,20 +52,6 @@
     "no_slip": true,
     "apply_faces": [
       "wall"
-    ]
-  },
-  {
-    "role": "outlet",
-    "type": "neumann",
-    "faces": [
-      7
-    ],
-    "apply_to": [
-      "pressure"
-    ],
-    "comment": "Defines outlet flow behavior with pressure gradient",
-    "apply_faces": [
-      "x_max"
     ]
   }
 ]
