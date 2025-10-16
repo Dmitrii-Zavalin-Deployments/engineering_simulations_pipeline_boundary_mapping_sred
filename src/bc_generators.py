@@ -9,7 +9,7 @@ def generate_internal_bc_blocks(
     debug=False
 ):
     """
-    Generates boundary condition blocks for internal flow.
+    Generates boundary condition blocks for internal flow using centroid-based inlet/outlet classification.
 
     Args:
         surfaces (list): List of surface entities (dim, tag).
@@ -31,25 +31,40 @@ def generate_internal_bc_blocks(
     inlet_faces = []
     outlet_faces = []
     wall_faces = []
-    inlet_labels = []
-    outlet_labels = []
+
+    x_min = min_bounds[0]
+    x_max = max_bounds[0]
+    x_span = abs(x_max - x_min)
 
     for dim, face_id in surfaces:
-        role, label = face_roles.get(face_id, ("wall", "wall"))
-        if role == "inlet":
-            inlet_faces.append(face_id)
-            inlet_labels.append(label)
-        elif role == "outlet":
-            outlet_faces.append(face_id)
-            outlet_labels.append(label)
-        elif role == "wall":
+        metadata = face_geometry_data.get(face_id, {})
+        centroid = metadata.get("p_centroid", [None, None, None])
+
+        if centroid is None or None in centroid:
+            if debug:
+                print(f"[DEBUG] Face {face_id}: Missing centroid, defaulting to wall.")
             wall_faces.append(face_id)
-        elif role == "skip":
+            continue
+
+        x = centroid[0]
+        ratio_min = abs(x - x_min) / x_span if x_span > 0 else 1.0
+        ratio_max = abs(x - x_max) / x_span if x_span > 0 else 1.0
+
+        if debug:
+            print(f"[DEBUG] Face {face_id}: Centroid X = {x:.6f}, ratio_min = {ratio_min:.4f}, ratio_max = {ratio_max:.4f}")
+
+        if ratio_min < (1 - threshold):
+            inlet_faces.append(face_id)
             if debug:
-                print(f"[DEBUG] Skipping face {face_id} (label: {label}) due to perpendicular bounding plane.")
+                print(f"[DEBUG] Face {face_id}: Classified as INLET")
+        elif ratio_max < (1 - threshold):
+            outlet_faces.append(face_id)
+            if debug:
+                print(f"[DEBUG] Face {face_id}: Classified as OUTLET")
         else:
+            wall_faces.append(face_id)
             if debug:
-                print(f"[DEBUG] Face {face_id} has unrecognized role: {role}. Defaulting to skip.")
+                print(f"[DEBUG] Face {face_id}: Classified as WALL")
 
     blocks = []
 
@@ -62,7 +77,7 @@ def generate_internal_bc_blocks(
             "comment": "Defines inlet flow parameters for velocity and pressure",
             "velocity": velocity,
             "pressure": int(pressure),
-            "apply_faces": ["x_min"]
+            "apply_faces": "x_min"
         })
 
     if outlet_faces:
@@ -72,7 +87,7 @@ def generate_internal_bc_blocks(
             "faces": outlet_faces,
             "apply_to": ["pressure"],
             "comment": "Defines outlet flow behavior with pressure gradient",
-            "apply_faces": ["x_max"]
+            "apply_faces": "x_max"
         })
 
     if wall_faces:
@@ -83,7 +98,7 @@ def generate_internal_bc_blocks(
             "apply_to": ["velocity"],
             "comment": "Applies no-slip condition to internal wall surfaces",
             "no_slip": no_slip,
-            "apply_faces": ["wall"]
+            "apply_faces": "wall"
         })
 
     if debug:

@@ -54,6 +54,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
     bbox = gmsh.model.getBoundingBox(3, 1)
     min_bounds = [bbox[0], bbox[1], bbox[2]]
     max_bounds = [bbox[3], bbox[4], bbox[5]]
+    x_span = abs(x_max - x_min)
 
     face_roles = {}
     face_geometry_data = {}
@@ -64,9 +65,13 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             _, node_coords, _ = gmsh.model.mesh.getNodes(dim, face_id)
             coords = node_coords.reshape(-1, 3)
         except Exception:
+            if debug:
+                print(f"[DEBUG] Face {face_id}: Failed to retrieve node data.")
             continue
 
         if coords.shape[0] < 3:
+            if debug:
+                print(f"[DEBUG] Face {face_id}: Skipped due to insufficient nodes.")
             continue
 
         centroid = np.mean(coords, axis=0).tolist()
@@ -74,28 +79,27 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             "p_centroid": centroid
         }
 
-        coord_val = centroid[axis_index]
-        min_bound = min_bounds[axis_index]
-        max_bound = max_bounds[axis_index]
-
-        is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
-        is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
-        is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
-
-        is_on_min_of_flow_axis = abs(coord_val - min_bound) < TOL
-        is_on_max_of_flow_axis = abs(coord_val - max_bound) < TOL
+        x = centroid[0]
+        ratio_min = abs(x - x_min) / x_span if x_span > 0 else 1.0
+        ratio_max = abs(x - x_max) / x_span if x_span > 0 else 1.0
 
         if flow_region == "internal":
-            if axis_index == 0 and (is_on_min_of_flow_axis or is_on_max_of_flow_axis):
-                role = "inlet" if (is_positive_flow and is_on_min_of_flow_axis) or (not is_positive_flow and is_on_max_of_flow_axis) else "outlet"
-            elif is_on_bounding_plane:
-                role = "skip"
+            if ratio_min < (1 - threshold):
+                role = "inlet"
+            elif ratio_max < (1 - threshold):
+                role = "outlet"
             else:
-                role = "wall"
+                is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
+                is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
+                is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
+                role = "skip" if is_on_bounding_plane else "wall"
         else:
             role = "wall"
 
         face_roles[face_id] = (role, "wall")
+
+        if debug:
+            print(f"[DEBUG] Face {face_id}: Centroid X = {x:.6f}, ratio_min = {ratio_min:.4f}, ratio_max = {ratio_max:.4f}, role = {role}")
 
     if flow_region == "internal":
         return generate_internal_bc_blocks(
