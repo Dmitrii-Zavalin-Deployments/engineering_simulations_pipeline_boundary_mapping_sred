@@ -50,6 +50,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
 
     axis_index = max(range(3), key=lambda i: abs(velocity[i]))
     is_positive_flow = velocity[axis_index] > 0
+    axis_label = ["x", "y", "z"][axis_index]
 
     bbox = gmsh.model.getBoundingBox(3, 1)
     min_bounds = [bbox[0], bbox[1], bbox[2]]
@@ -89,7 +90,6 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             elif ratio_max < (1 - threshold):
                 role = "outlet"
             else:
-                # Check for bounding box alignment on any axis
                 is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
                 is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
                 is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
@@ -107,13 +107,61 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             surfaces, face_geometry_data, face_roles, velocity, pressure,
             no_slip, axis_index, is_positive_flow, min_bounds, max_bounds, threshold, debug
         )
-    else:
-        for face_id in face_roles:
-            face_roles[face_id] = ("wall", "wall")
-        return generate_external_bc_blocks(
-            surfaces, face_roles, velocity, pressure,
-            no_slip, axis_index, is_positive_flow, debug
-        )
+
+    # --- External Flow Handling ---
+    boundary_conditions = []
+
+    # Force all geometric faces to wall
+    for face_id in face_roles:
+        face_roles[face_id] = ("wall", "wall")
+
+    obstacle_blocks = generate_external_bc_blocks(
+        surfaces, face_roles, velocity, pressure,
+        no_slip, axis_index, is_positive_flow, debug
+    )
+    boundary_conditions.extend(obstacle_blocks)
+
+    # --- Synthesize Far-Field Boundaries ---
+    if debug:
+        print("[DEBUG_FLOW] Synthesizing external domain boundaries...")
+
+    synthesized_id = -1
+
+    # Inlet
+    inlet_label = f"{axis_label}_min" if is_positive_flow else f"{axis_label}_max"
+    boundary_conditions.append({
+        "role": "inlet",
+        "type": "dirichlet",
+        "faces": [synthesized_id],
+        "apply_to": ["velocity", "pressure"],
+        "comment": "Synthesized Far-Field Inlet (boundary of the computational box)",
+        "velocity": velocity,
+        "pressure": int(pressure),
+        "apply_faces": [inlet_label]
+    })
+    if debug:
+        print(f"[DEBUG_FLOW] Added synthesized Inlet (ID {synthesized_id}) with label {inlet_label}")
+    synthesized_id -= 1
+
+    # Outlet
+    outlet_label = f"{axis_label}_max" if is_positive_flow else f"{axis_label}_min"
+    boundary_conditions.append({
+        "role": "outlet",
+        "type": "neumann",
+        "faces": [synthesized_id],
+        "apply_to": ["pressure"],
+        "comment": "Synthesized Far-Field Outlet (boundary of the computational box)",
+        "apply_faces": [outlet_label]
+    })
+    if debug:
+        print(f"[DEBUG_FLOW] Added synthesized Outlet (ID {synthesized_id}) with label {outlet_label}")
+    synthesized_id -= 1
+
+    # --- Skipping Far-Field Walls ---
+    if debug:
+        print("[DEBUG_FLOW] Skipping synthesized far-field walls (y/z planes) for external flow.")
+
+    return boundary_conditions
 
 
 
