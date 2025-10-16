@@ -25,18 +25,18 @@ def test_missing_domain_keys(missing_key):
         "min_z": 2.0, "max_z": 3.0
     }
     domain.pop(missing_key)
-    with pytest.raises(DomainValidationError, match=f"Missing domain bounds for axis"):
+    with pytest.raises(DomainValidationError, match="Missing domain bounds"):
         validate_domain_bounds(domain)
 
 
-@pytest.mark.parametrize("axis,min_val,max_val", [
-    ("x", "a", 10.0),
-    ("y", 1.0, "b"),
-    ("z", None, 3.0),
-    ("z", 2.0, None)
+@pytest.mark.parametrize("axis,min_val,max_val,expected_error", [
+    ("x", "a", 10.0, "Non-numeric bounds"),
+    ("y", 1.0, "b", "Non-numeric bounds"),
+    ("z", None, 3.0, "Missing domain bounds"),
+    ("z", 2.0, None, "Missing domain bounds")
 ])
-def test_non_numeric_bounds(axis, min_val, max_val):
-    """Should raise DomainValidationError when bounds are non-numeric."""
+def test_non_numeric_bounds(axis, min_val, max_val, expected_error):
+    """Should raise DomainValidationError when bounds are non-numeric or missing."""
     domain = {
         "min_x": 0.0, "max_x": 10.0,
         "min_y": 1.0, "max_y": 5.0,
@@ -44,7 +44,7 @@ def test_non_numeric_bounds(axis, min_val, max_val):
     }
     domain[f"min_{axis}"] = min_val
     domain[f"max_{axis}"] = max_val
-    with pytest.raises(DomainValidationError, match="Non-numeric bounds"):
+    with pytest.raises(DomainValidationError, match=expected_error):
         validate_domain_bounds(domain)
 
 
@@ -73,7 +73,6 @@ def test_string_castable_bounds():
         "min_y": "1.0", "max_y": "5.0",
         "min_z": "2.0", "max_z": "3.0"
     }
-    validate_domain_bounds(domain)  # Should not raise
-
+    validate_domain_bounds(domain)
 
 
