@@ -20,12 +20,19 @@
         "description": "Type of boundary condition"
       },
       "apply_faces": {
-        "type": ["string", "array"],
-        "items": {
-          "type": "string",
-          "enum": ["wall", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
-        },
-        "enum": ["wall", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"],
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": ["wall", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["wall", "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"]
+            }
+          }
+        ],
         "description": "Faces to which the condition is applied"
       },
       "faces": {
