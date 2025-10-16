@@ -1,14 +1,7 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for cube_with_hole_internal_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -35,13 +35,11 @@     "type": "neumann"
-   },
-   {
--    "apply_faces": [
--      "wall"
--    ],
-+    "apply_faces": "wall",
-     "apply_to": [
+--- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -41,7 +41,7 @@     "apply_to": [
        "velocity"
      ],
 -    "comment": "Defines near-wall flow parameters with no-slip condition",
@@ -18,4 +11,4 @@
      ],
 -------------------------------------------------
 
---- Commit Details: Run 18565395844 / Attempt 1 ---
+--- Commit Details: Run 18565554574 / Attempt 1 ---
