@@ -178,36 +178,36 @@ jobs:
 
           echo "✅ Integration test completed for cube_with_hole_no_slip."
 
-      # # ----------------------------------------------------------------------
-      # # Integration Test 3: hollow_cylinder_external_output_slip (HARD FAIL on mismatch)
-      # # ----------------------------------------------------------------------
-      # - name: 🏃 Run Integration Test (hollow_cylinder_external_output_slip)
-      #   id: integration_test_hollow_cylinder_external_output_slip
-      #   run: |
-      #     STEP_FILE="tests/test_models/hollow_cylinder.step"
-      #     EXPECTED_OUTPUT_PATH="tests/test_models/hollow_cylinder_external_output_no_slip.json"
-      #     TEMP_OUTPUT_FILE="tests/test_models/hollow_cylinder_cli_output_slip.json"
+      # ----------------------------------------------------------------------
+      # Integration Test 3: hollow_cylinder_external_output_slip (HARD FAIL on mismatch)
+      # ----------------------------------------------------------------------
+      - name: 🏃 Run Integration Test (hollow_cylinder_external_output_slip)
+        id: integration_test_hollow_cylinder_external_output_slip
+        run: |
+          STEP_FILE="tests/test_models/hollow_cylinder.step"
+          EXPECTED_OUTPUT_PATH="tests/test_models/hollow_cylinder_external_output_no_slip.json"
+          TEMP_OUTPUT_FILE="tests/test_models/hollow_cylinder_cli_output_slip.json"
 
-      #     if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
-      #       echo "❌ Fatal Error: Required file missing. Cannot run integration test."
-      #       exit 1
-      #     fi
+          if [ ! -f "$STEP_FILE" ] || [ ! -f "$EXPECTED_OUTPUT_PATH" ]; then
+            echo "❌ Fatal Error: Required file missing. Cannot run integration test."
+            exit 1
+          fi
 
-      #     echo "--- Running test: hollow_cylinder_external_output_no_slip ---"
+          echo "--- Running test: hollow_cylinder_external_output_no_slip ---"
 
-      #     python3 src/gmsh_runner.py \
-      #       --step "$STEP_FILE" \
-      #       --resolution 0.5 \
-      #       --flow_region external \
-      #       --padding_factor 0 \
-      #       --no_slip false \
-      #       --initial_velocity 1.0 0.0 0.0 \
-      #       --initial_pressure 101325 \
-      #       --output "$TEMP_OUTPUT_FILE"
+          python3 src/gmsh_runner.py \
+            --step "$STEP_FILE" \
+            --resolution 0.5 \
+            --flow_region external \
+            --padding_factor 0 \
+            --no_slip false \
+            --initial_velocity 1.0 0.0 0.0 \
+            --initial_pressure 101325 \
+            --output "$TEMP_OUTPUT_FILE"
 
-      #     python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
+          python3 tests/helpers/compare_json.py "$EXPECTED_OUTPUT_PATH" "$TEMP_OUTPUT_FILE"
 
-      #     echo "✅ Integration test completed for hollow_cylinder_external_output_no_slip."
+          echo "✅ Integration test completed for hollow_cylinder_external_output_no_slip."
 
       # - name: 🧪 Run Unit Tests with Coverage
       #   run: |
