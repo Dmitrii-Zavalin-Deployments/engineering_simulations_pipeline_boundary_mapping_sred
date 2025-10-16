@@ -35,6 +35,7 @@ def generate_internal_bc_blocks(
     x_min = min_bounds[0]
     x_max = max_bounds[0]
     x_span = abs(x_max - x_min)
+    TOL = 1e-6  # Use same tolerance as classification
 
     for dim, face_id in surfaces:
         metadata = face_geometry_data.get(face_id, {})
@@ -62,9 +63,19 @@ def generate_internal_bc_blocks(
             if debug:
                 print(f"[DEBUG] Face {face_id}: Classified as OUTLET")
         else:
-            wall_faces.append(face_id)
-            if debug:
-                print(f"[DEBUG] Face {face_id}: Classified as WALL")
+            # Check if wall face lies on any bounding box plane
+            is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
+            is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
+            is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
+
+            if is_on_bounding_plane:
+                if debug:
+                    print(f"[DEBUG] Skipping face {face_id} (centroid on bounding box plane)")
+                continue  # Skip this face
+            else:
+                wall_faces.append(face_id)
+                if debug:
+                    print(f"[DEBUG] Face {face_id}: Classified as WALL")
 
     blocks = []
 

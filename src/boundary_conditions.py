@@ -89,6 +89,7 @@ def generate_boundary_conditions(step_path, velocity, pressure, no_slip, flow_re
             elif ratio_max < (1 - threshold):
                 role = "outlet"
             else:
+                # Check for bounding box alignment on any axis
                 is_min_on_any_axis = any(abs(centroid[i] - min_bounds[i]) < TOL for i in range(3))
                 is_max_on_any_axis = any(abs(centroid[i] - max_bounds[i]) < TOL for i in range(3))
                 is_on_bounding_plane = is_min_on_any_axis or is_max_on_any_axis
