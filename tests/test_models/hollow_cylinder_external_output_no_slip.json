@@ -8,7 +8,7 @@
     "apply_to": [
       "velocity"
     ],
-    "comment": "Obstacle Wall Face 1 with no-slip condition",
+    "comment": "Applies no-slip condition to all external walls",
     "velocity": [
       0.0,
       0.0,
