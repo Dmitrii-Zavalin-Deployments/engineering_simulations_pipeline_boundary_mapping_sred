@@ -107,7 +107,7 @@ def generate_internal_bc_blocks(
             "type": "dirichlet",
             "faces": wall_faces,
             "apply_to": ["velocity"],
-            "comment": "Applies no-slip condition to internal wall surfaces",
+            "comment": "Defines near-wall flow parameters with no-slip condition",
             "no_slip": no_slip,
             "velocity": [0.0, 0.0, 0.0],
             "apply_faces": ["wall"]
