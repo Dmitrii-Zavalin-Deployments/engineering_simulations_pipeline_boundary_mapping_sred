@@ -1,23 +1,12 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for cube_with_hole_internal_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -22,12 +22,24 @@   },
+--- cube_with_hole_internal_output_no_slip.json+++ cube_with_hole_cli_output_no_slip.json@@ -35,13 +35,11 @@     "type": "neumann"
+   },
    {
-     "apply_faces": [
+-    "apply_faces": [
 -      "wall"
-+      "x_max"
-     ],
-+    "apply_to": [
-+      "pressure"
-+    ],
-+    "comment": "Defines outlet flow behavior with pressure gradient",
-+    "faces": [
-+      7
-+    ],
-+    "role": "outlet",
-+    "type": "neumann"
-+  },
-+  {
+-    ],
 +    "apply_faces": "wall",
      "apply_to": [
        "velocity"
@@ -27,24 +16,6 @@
      "faces": [
        6
      ],
-@@ -39,19 +51,5 @@       0.0,
-       0.0
-     ]
--  },
--  {
--    "apply_faces": [
--      "x_max"
--    ],
--    "apply_to": [
--      "pressure"
--    ],
--    "comment": "Defines outlet flow behavior with pressure gradient",
--    "faces": [
--      7
--    ],
--    "role": "outlet",
--    "type": "neumann"
-   }
- ]-------------------------------------------------
+-------------------------------------------------
 
---- Commit Details: Run 18565170882 / Attempt 1 ---
+--- Commit Details: Run 18565395844 / Attempt 1 ---
