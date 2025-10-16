@@ -77,7 +77,7 @@ def generate_internal_bc_blocks(
             "comment": "Defines inlet flow parameters for velocity and pressure",
             "velocity": velocity,
             "pressure": int(pressure),
-            "apply_faces": "x_min"
+            "apply_faces": ["x_min"]
         })
 
     if outlet_faces:
@@ -87,7 +87,7 @@ def generate_internal_bc_blocks(
             "faces": outlet_faces,
             "apply_to": ["pressure"],
             "comment": "Defines outlet flow behavior with pressure gradient",
-            "apply_faces": "x_max"
+            "apply_faces": ["x_max"]
         })
 
     if wall_faces:
