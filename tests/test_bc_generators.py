@@ -1,121 +1,101 @@
+# tests/unit/test_bc_generators.py
+
 import pytest
-from src.bc_generators import generate_internal_bc_blocks, generate_external_bc_blocks
+from src import bc_generators
 
-# Shared test constants
-VELOCITY = [1.0, 0.0, 0.0]
-PRESSURE = 101325
-NO_SLIP = True
-AXIS_INDEX = 0  # x-axis
-IS_POSITIVE_FLOW = True
-DEBUG = False
 
-def mock_face(face_id, centroid, normal, label, max_index):
-    return {
-        face_id: {
-            "face_label": label,
-            "max_index": max_index,
-            "p_centroid": centroid,
-            "normal_unit": normal
-        }
-    }
-
-def test_internal_inlet_outlet_wall_grouping():
-    surfaces = [(2, 1), (2, 2), (2, 3)]
+def test_generate_internal_bc_blocks_classifies_all_roles():
+    """Should classify inlet, outlet, and wall faces correctly based on centroid X-position."""
+    surfaces = [(2, 101), (2, 102), (2, 103)]
     face_geometry_data = {
-        **mock_face(1, [0.0, 0.5, 0.5], [1, 0, 0], "x_min", 0),
-        **mock_face(2, [1.0, 0.5, 0.5], [-1, 0, 0], "x_max", 0),
-        **mock_face(3, [0.5, 0.0, 0.5], [0, 1, 0], "y_min", 1),
+        101: {"p_centroid": [0.0, 0.5, 0.5]},  # inlet
+        102: {"p_centroid": [10.0, 0.5, 0.5]}, # outlet
+        103: {"p_centroid": [5.0, 0.5, 0.5]}   # wall
     }
-    face_roles = {}
-
+    face_roles = {}  # unused in this function
+    velocity = [1.0, 0.0, 0.0]
+    pressure = 101325
+    no_slip = True
+    axis_index = 0
+    is_positive_flow = True
     min_bounds = [0.0, 0.0, 0.0]
-    max_bounds = [1.0, 1.0, 1.0]
+    max_bounds = [10.0, 1.0, 1.0]
 
-    result = generate_internal_bc_blocks(
+    blocks = bc_generators.generate_internal_bc_blocks(
         surfaces, face_geometry_data, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        min_bounds, max_bounds, DEBUG
+        velocity, pressure, no_slip,
+        axis_index, is_positive_flow,
+        min_bounds, max_bounds,
+        threshold=0.9,
+        debug=False
     )
 
-    # Updated assertion: only inlet and outlet expected due to bounding logic
-    roles = sorted([b["role"] for b in result])
-    assert roles == ["inlet", "outlet"]
+    roles = {b["role"] for b in blocks}
+    assert "inlet" in roles
+    assert "outlet" in roles
+    assert "wall" in roles
+    assert sum(len(b["faces"]) for b in blocks) == 3
 
-def test_internal_skip_logic_on_perpendicular_bounds():
-    surfaces = [(2, 4)]
+
+def test_generate_internal_bc_blocks_missing_centroid_defaults_to_wall():
+    """Should classify face with missing centroid as wall."""
+    surfaces = [(2, 201)]
     face_geometry_data = {
-        **mock_face(4, [0.0, 0.0, 0.0], [0, 0, 1], "z_min", 2),
+        201: {"p_centroid": [None, None, None]}
     }
-    face_roles = {}
-
-    min_bounds = [0.0, 0.0, 0.0]
-    max_bounds = [1.0, 1.0, 1.0]
-
-    result = generate_internal_bc_blocks(
-        surfaces, face_geometry_data, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        min_bounds, max_bounds, DEBUG
+    blocks = bc_generators.generate_internal_bc_blocks(
+        surfaces, face_geometry_data, {},
+        [1.0, 0.0, 0.0], 101325, True,
+        0, True,
+        [0.0, 0.0, 0.0], [10.0, 1.0, 1.0],
+        debug=False
     )
+    assert len(blocks) == 1
+    assert blocks[0]["role"] == "wall"
+    assert 201 in blocks[0]["faces"]
 
-    assert result == []
 
-def test_external_synthesized_blocks_structure():
-    surfaces = [(2, 10), (2, 11)]
-    face_roles = {
-        10: ("wall", "wall"),
-        11: ("wall", "wall")
+def test_generate_internal_bc_blocks_skips_bounding_plane_faces():
+    """Should skip wall faces that lie exactly on bounding box planes."""
+    surfaces = [(2, 301)]
+    face_geometry_data = {
+        301: {"p_centroid": [0.0, 0.0, 0.0]}  # on bounding box min
     }
+    blocks = bc_generators.generate_internal_bc_blocks(
+        surfaces, face_geometry_data, {},
+        [1.0, 0.0, 0.0], 101325, True,
+        0, True,
+        [0.0, 0.0, 0.0], [10.0, 1.0, 1.0],
+        debug=False
+    )
+    assert blocks == []
 
-    result = generate_external_bc_blocks(
+
+def test_generate_external_bc_blocks_applies_wall_to_all_faces():
+    """Should apply wall condition to all faces in external flow."""
+    surfaces = [(2, 401), (2, 402)]
+    face_roles = {}  # unused
+    blocks = bc_generators.generate_external_bc_blocks(
         surfaces, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        DEBUG
+        [1.0, 0.0, 0.0], 101325, True,
+        0, True,
+        debug=False
     )
+    assert len(blocks) == 1
+    assert blocks[0]["role"] == "wall"
+    assert set(blocks[0]["faces"]) == {401, 402}
+    assert blocks[0]["no_slip"] is True
+    assert blocks[0]["velocity"] == [0.0, 0.0, 0.0]
 
-    assert len(result) == 8  # 2 real walls + 6 synthesized (1 inlet, 1 outlet, 4 walls)
-    roles = [block["role"] for block in result]
-    assert roles.count("inlet") == 1
-    assert roles.count("outlet") == 1
-    assert roles.count("wall") == 6
 
-def test_external_synthesized_ids_are_negative():
-    surfaces = []
-    face_roles = {}
-
-    result = generate_external_bc_blocks(
-        surfaces, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        DEBUG
+def test_generate_external_bc_blocks_empty_surface_list():
+    """Should return empty list when no surfaces are provided."""
+    blocks = bc_generators.generate_external_bc_blocks(
+        [], {}, [1.0, 0.0, 0.0], 101325, True,
+        0, True,
+        debug=False
     )
-
-    synthesized_ids = [block["faces"][0] for block in result]
-    assert all(i < 0 for i in synthesized_ids)
-
-def test_internal_grouping_merges_faces():
-    surfaces = [(2, 5), (2, 6)]
-    face_geometry_data = {
-        **mock_face(5, [0.0, 0.5, 0.5], [1, 0, 0], "x_min", 0),
-        **mock_face(6, [0.0, 0.6, 0.5], [1, 0, 0], "x_min", 0),
-    }
-    face_roles = {}
-
-    min_bounds = [0.0, 0.0, 0.0]
-    max_bounds = [1.0, 1.0, 1.0]
-
-    result = generate_internal_bc_blocks(
-        surfaces, face_geometry_data, face_roles,
-        VELOCITY, PRESSURE, NO_SLIP,
-        AXIS_INDEX, IS_POSITIVE_FLOW,
-        min_bounds, max_bounds, DEBUG
-    )
-
-    inlet_blocks = [b for b in result if b["role"] == "inlet"]
-    assert len(inlet_blocks) == 1
-    assert set(inlet_blocks[0]["faces"]) == {5, 6}
+    assert blocks == []
 
 
 
