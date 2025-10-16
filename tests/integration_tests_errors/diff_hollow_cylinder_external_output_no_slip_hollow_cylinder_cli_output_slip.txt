@@ -1,85 +1,17 @@
 ❌ INTEGRATION TEST FAILED: Output mismatch for hollow_cylinder_external_output_no_slip.json
 
 --- JSON UNIFIED DIFF (Expected vs Generated) ---
---- hollow_cylinder_external_output_no_slip.json+++ hollow_cylinder_cli_output_slip.json@@ -6,184 +6,12 @@     "apply_to": [
+--- hollow_cylinder_external_output_no_slip.json+++ hollow_cylinder_cli_output_slip.json@@ -6,7 +6,7 @@     "apply_to": [
        "velocity"
      ],
 -    "comment": "Obstacle Wall Face 1 with no-slip condition",
 +    "comment": "Applies no-slip condition to all external walls",
      "faces": [
--      1
--    ],
--    "no_slip": false,
--    "role": "wall",
--    "type": "dirichlet",
--    "velocity": [
--      0.0,
--      0.0,
--      0.0
--    ]
--  },
--  {
--    "apply_faces": [
--      "wall"
--    ],
--    "apply_to": [
--      "velocity"
--    ],
--    "comment": "Obstacle Wall Face 2 with no-slip condition",
--    "faces": [
--      2
--    ],
--    "no_slip": false,
--    "role": "wall",
--    "type": "dirichlet",
--    "velocity": [
--      0.0,
--      0.0,
--      0.0
--    ]
--  },
--  {
--    "apply_faces": [
--      "wall"
--    ],
--    "apply_to": [
--      "velocity"
--    ],
--    "comment": "Obstacle Wall Face 3 with no-slip condition",
--    "faces": [
--      3
--    ],
--    "no_slip": false,
--    "role": "wall",
--    "type": "dirichlet",
--    "velocity": [
--      0.0,
--      0.0,
--      0.0
--    ]
--  },
--  {
--    "apply_faces": [
--      "wall"
--    ],
--    "apply_to": [
--      "velocity"
--    ],
--    "comment": "Obstacle Wall Face 4 with no-slip condition",
--    "faces": [
-+      1,
-+      2,
-+      3,
-       4
--    ],
--    "no_slip": false,
--    "role": "wall",
--    "type": "dirichlet",
--    "velocity": [
--      0.0,
--      0.0,
--      0.0
--    ]
+       1,
+       2,
+@@ -21,120 +21,5 @@       0.0,
+       0.0
+     ]
 -  },
 -  {
 -    "apply_faces": [
@@ -186,9 +118,16 @@
 -    "comment": "Synthesized Far-Field Wall (z_max)",
 -    "faces": [
 -      -6
-     ],
-     "no_slip": false,
-     "role": "wall",
--------------------------------------------------
+-    ],
+-    "no_slip": false,
+-    "role": "wall",
+-    "type": "dirichlet",
+-    "velocity": [
+-      0.0,
+-      0.0,
+-      0.0
+-    ]
+   }
+ ]-------------------------------------------------
 
---- Commit Details: Run 18566565517 / Attempt 1 ---
+--- Commit Details: Run 18566758166 / Attempt 1 ---
