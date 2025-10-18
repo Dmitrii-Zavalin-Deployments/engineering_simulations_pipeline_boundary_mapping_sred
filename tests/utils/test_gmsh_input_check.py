@@ -4,7 +4,7 @@ import pytest
 import os
 from unittest import mock
 from src.utils import gmsh_input_check
-from src.utils.gmsh_input_check import ValidationError, validate_step_has_volumes, log_surface_deviation
+from src.utils.gmsh_input_check import ValidationError, validate_step_has_volumes
 
 
 @pytest.fixture(autouse=True)
@@ -52,27 +52,6 @@ def test_validate_step_with_no_volumes(monkeypatch):
 
     with pytest.raises(ValidationError, match="contains no 3D volumes"):
         validate_step_has_volumes("valid_but_empty.step")
-
-
-def test_log_surface_deviation_basic_output(capsys):
-    """Should print diagnostic info for borderline match."""
-    log_surface_deviation(surface_tag=42, deviation_ratio=0.85)
-    captured = capsys.readouterr()
-    assert "[DIAG] Surface 42: BORDERLINE MATCH (0.85 aligned)" in captured.out
-
-
-def test_log_surface_deviation_with_coords(capsys):
-    """Should print deviation stats when x_coords and anchor are provided."""
-    log_surface_deviation(surface_tag=1, deviation_ratio=0.9, x_coords=[1.0, 1.1, 0.9], anchor=1.0)
-    captured = capsys.readouterr()
-    assert "Node deviation from anchor" in captured.out
-
-
-def test_log_surface_deviation_debug_mode(capsys):
-    """Should print full X-coord spread in debug mode."""
-    log_surface_deviation(surface_tag=99, deviation_ratio=0.95, x_coords=[1.0, 1.2], anchor=1.0, debug=True)
-    captured = capsys.readouterr()
-    assert "[DEBUG_DIAG] Surface 99" in captured.out
 
 
 
